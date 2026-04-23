@@ -6,14 +6,16 @@ import LoginPage from '@/pages/auth/LoginPage'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import SociosPage from '@/pages/socios/SociosPage'
 import PlanesPage from '@/pages/planes/PlanesPage'
-import RutinasPage from '@/pages/rutinas/RutinasPage'
-import EjerciciosPage from '@/pages/ejercicios/EjerciciosPage'
-import GruposMuscularesPage from '@/pages/gruposMusculares/GruposMuscularesPage'
+
 import CuotasPage from '@/pages/cuotas/CuotasPage'
 import AsistenciasPage from '@/pages/asistencias/AsistenciasPage'
 import HorariosPage from '@/pages/horarios/HorariosPage'
 import RecuperacionesPage from '@/pages/recuperaciones/RecuperacionesPage'
 import RolesPage from '@/pages/roles/RolesPage'
+import UsuariosPage from '@/pages/usuarios/UsuariosPage'
+import SocioPerfilPage from '@/pages/socios/SocioPerfilPage'
+import MetodosPagoPage from '@/pages/metodosPago/MetodosPagoPage'
+import BibliotecaPage from '@/pages/ejercicios/BibliotecaPage'
 
 export default function App() {
   return (
@@ -33,14 +35,17 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="socios" element={<SociosPage />} />
           <Route path="planes" element={<PlanesPage />} />
-          <Route path="rutinas" element={<RutinasPage />} />
-          <Route path="ejercicios" element={<EjerciciosPage />} />
-          <Route path="grupos-musculares" element={<GruposMuscularesPage />} />
+          
           <Route path="cuotas" element={<CuotasPage />} />
           <Route path="asistencias" element={<AsistenciasPage />} />
           <Route path="horarios" element={<HorariosPage />} />
           <Route path="recuperaciones" element={<RecuperacionesPage />} />
           <Route path="roles" element={<RolesPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="socios/:id" element={<SocioPerfilPage />} />
+          <Route path="metodos-pago" element={<MetodosPagoPage />} />
+          <Route path="biblioteca" element={<BibliotecaPage />} />
+
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

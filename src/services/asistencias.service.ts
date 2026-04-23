@@ -9,12 +9,16 @@ export const asistenciasService = {
     return res.data
   },
 
-  registrar: async (socioId: number, fecha: string, tipoAsistencia = 'NORMAL', tipoActividad?: string) => {
-    const res = await api.post(`/socios/${socioId}/asistencias`, {
-      fecha,
-      tipoAsistencia,
-      tipoActividad,
-    })
+  registrar: async (
+    socioId: number,
+    fecha: string,
+    tipoAsistencia = 'NORMAL',
+    tipoActividad?: string,
+    recuperacionId?: number
+  ) => {
+    const body: Record<string, unknown> = { fecha, tipoAsistencia, tipoActividad }
+    if (recuperacionId) body.recuperacionId = recuperacionId
+    const res = await api.post(`/socios/${socioId}/asistencias`, body)
     return res.data
   },
 

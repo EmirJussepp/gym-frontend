@@ -14,8 +14,10 @@ import { useToast } from '@/hooks/useToast'
 import { usePagination } from '@/hooks/usePagination'
 import SocioForm from './SocioForm'
 import SocioRutinaModal from './SocioRutinaModal'
-import { Plus, Pencil, Trash2, ListChecks } from 'lucide-react'
+import { Plus, Pencil, Trash2, ListChecks, User } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { useNavigate } from 'react-router-dom'
+
 
 const ESTADO_VARIANT: Record<string, 'success' | 'danger' | 'warning'> = {
   ACTIVO: 'success',
@@ -25,6 +27,7 @@ const ESTADO_VARIANT: Record<string, 'success' | 'danger' | 'warning'> = {
 
 export default function SociosPage() {
   const [socios, setSocios] = useState<Socio[]>([])
+  
   const [planes, setPlanes] = useState<Plan[]>([])
   const [totalPaginas, setTotalPaginas] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -64,6 +67,7 @@ export default function SociosPage() {
       toast('Error al eliminar socio', 'error')
     }
   }
+  const navigate = useNavigate()
 
   const planNombre = (planId: number) =>
     planes.find(p => p.planId === planId)?.nombre ?? `Plan #${planId}`
@@ -108,6 +112,10 @@ export default function SociosPage() {
                   <TableTd>{s.ultimaAsistenciaFecha ? formatDate(s.ultimaAsistenciaFecha) : '—'}</TableTd>
                   <TableTd>
                     <div className="flex items-center gap-1 justify-end">
+                      <Button variant="ghost" size="icon" onClick={() => navigate(`/socios/${s.socioId}`)}>
+  <User className="h-3.5 w-3.5 text-muted-foreground" />
+</Button>
+                      
                       <Button variant="ghost" size="icon" title="Rutinas" onClick={() => setRutinaModal(s)}>
                         <ListChecks className="h-3.5 w-3.5 text-primary" />
                       </Button>

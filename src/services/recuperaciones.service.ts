@@ -11,12 +11,12 @@ export interface Recuperacion {
 }
 
 export const recuperacionesService = {
-  getBySocio: async (socioId: number, estado?: string): Promise<Recuperacion[]> => {
-    const params = estado ? `?estado=${estado}` : ''
-    const res = await api.get(`/socios/${socioId}/recuperaciones${params}`)
-    return res.data
-  },
-
+ getBySocio: async (socioId: number, estado?: string): Promise<Recuperacion[]> => {
+  const params = estado ? `?estado=${estado}` : ''
+  const res = await api.get(`/socios/${socioId}/recuperaciones${params}`)
+  return res.data
+},
+  
   create: async (socioId: number, fechaClaseOriginal: string, tipoActividad: string, fechaVencimiento: string) => {
     const res = await api.post(`/socios/${socioId}/recuperaciones`, {
       fechaClaseOriginal,
