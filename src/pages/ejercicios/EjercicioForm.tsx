@@ -10,12 +10,13 @@ import { Button } from '@/components/ui/Button'
 
 const schema = z.object({
   nombre: z.string().min(1, 'Requerido'),
-  grupoMuscularId: z.coerce
+  grupoMuscularId: z
     .number({ required_error: 'Seleccioná un grupo muscular' })
     .min(1, 'Seleccioná un grupo muscular'),
   descripcion: z.string().optional(),
   activo: z.coerce.boolean().optional(),
 })
+
 
 type FormData = z.infer<typeof schema>
 
@@ -42,7 +43,7 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
     if (ejercicio) {
       reset({
         nombre: ejercicio.nombre,
-        grupoMuscularId: ejercicio.grupoMuscularId,
+        grupoMuscularId: ejercicio.grupoMuscularId, // 👈 esto está bien si tu ejercicio guarda el id
         descripcion: ejercicio.descripcion ?? '',
         activo: ejercicio.activo,
       })
@@ -52,8 +53,11 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
   }, [ejercicio, reset])
 
   const onSubmit = async (data: FormData) => {
-    if (ejercicio) await ejerciciosService.update(ejercicio.ejercicioId, data)
-    else await ejerciciosService.create(data)
+    if (ejercicio) {
+      await ejerciciosService.update(ejercicio.ejercicioId, data)
+    } else {
+      await ejerciciosService.create(data)
+    }
     onSaved()
   }
 
@@ -68,7 +72,7 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
         {...register('nombre')}
       />
 
-      {/* Grupo muscular (FIX) */}
+      {/* Grupo muscular */}
       <Controller
         name="grupoMuscularId"
         control={control}
@@ -78,11 +82,15 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
             label="Grupo muscular"
             error={errors.grupoMuscularId?.message as string}
             value={field.value ?? ''}
-            onChange={(e) => field.onChange(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value
+              field.onChange(value ? Number(value) : undefined)
+            }}
           >
             <option value="">Seleccionar...</option>
+
             {grupos.map((g) => (
-              <option key={g.grupoMuscularId} value={g.grupoMuscularId}>
+              <option key={g.id} value={g.id}>
                 {g.nombre}
               </option>
             ))}
@@ -108,7 +116,7 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
             id="activo"
             label="Estado"
             value={String(field.value)}
-            onChange={(e) => field.onChange(e.target.value)}
+            onChange={(e) => field.onChange(e.target.value === 'true')}
           >
             <option value="true">Activo</option>
             <option value="false">Inactivo</option>

@@ -80,7 +80,6 @@ export interface Ejercicio {
   ejercicioId: number
   nombre: string
   grupoMuscularId: number
-  grupoMuscularNombre?: string
   descripcion?: string
   activo: boolean
 }
@@ -94,7 +93,7 @@ export interface EjercicioRequest {
 
 // ─── Grupos Musculares ───────────────────────────────────────────────────────
 export interface GrupoMuscular {
-  grupoMuscularId: number
+  id: number
   nombre: string
 }
 

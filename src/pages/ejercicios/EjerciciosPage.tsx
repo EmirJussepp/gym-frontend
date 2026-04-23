@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ejerciciosService } from '@/services/ejercicios.service'
 import type { Ejercicio, GrupoMuscular } from '@/types'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -39,9 +39,17 @@ export default function EjerciciosPage() {
   }, [pagina, porPagina])
 
   useEffect(() => { fetchEjercicios() }, [fetchEjercicios])
+
   useEffect(() => {
-    ejerciciosService.getGruposMusculares().then(setGrupos).catch(() => {})
+    ejerciciosService.getGruposMusculares()
+      .then(setGrupos)
+      .catch(() => toast('Error al cargar grupos', 'error'))
   }, [])
+
+  // 🔥 MAP CORRECTO
+  const gruposMap = useMemo(() => {
+    return Object.fromEntries(grupos.map(g => [g.id, g.nombre]))
+  }, [grupos])
 
   const handleDelete = async () => {
     if (!confirmDelete) return
@@ -78,19 +86,29 @@ export default function EjerciciosPage() {
                 <TableTh />
               </TableRow>
             </TableHead>
+
             <TableBody>
               {ejercicios.map((e) => (
                 <TableRow key={e.ejercicioId}>
                   <TableTd className="font-medium">{e.nombre}</TableTd>
+
+                  {/* ✅ CORREGIDO */}
                   <TableTd>
-                    <Badge variant="secondary">{e.grupoMuscularNombre ?? '—'}</Badge>
+                    <Badge variant="secondary">
+                      {gruposMap[e.grupoMuscularId] || '—'}
+                    </Badge>
                   </TableTd>
-                  <TableTd className="text-muted-foreground max-w-xs truncate">{e.descripcion ?? '—'}</TableTd>
+
+                  <TableTd className="text-muted-foreground max-w-xs truncate">
+                    {e.descripcion ?? '—'}
+                  </TableTd>
+
                   <TableTd>
                     <Badge variant={e.activo ? 'success' : 'danger'}>
                       {e.activo ? 'Activo' : 'Inactivo'}
                     </Badge>
                   </TableTd>
+
                   <TableTd>
                     <div className="flex items-center gap-1 justify-end">
                       <Button variant="ghost" size="icon" onClick={() => { setEditando(e); setModalOpen(true) }}>
@@ -105,21 +123,38 @@ export default function EjerciciosPage() {
               ))}
             </TableBody>
           </Table>
-          <Pagination pagina={pagina} totalPaginas={totalPaginas} onPrev={() => setPagina(p => p - 1)} onNext={() => setPagina(p => p + 1)} />
+
+          <Pagination
+            pagina={pagina}
+            totalPaginas={totalPaginas}
+            onPrev={() => setPagina(p => p - 1)}
+            onNext={() => setPagina(p => p + 1)}
+          />
         </>
       )}
 
-      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setEditando(null) }} title={editando ? 'Editar ejercicio' : 'Nuevo ejercicio'}>
+      <Modal
+        open={modalOpen}
+        onClose={() => { setModalOpen(false); setEditando(null) }}
+        title={editando ? 'Editar ejercicio' : 'Nuevo ejercicio'}
+      >
         <EjercicioForm
           grupos={grupos}
           ejercicio={editando}
-          onSaved={() => { setModalOpen(false); setEditando(null); toast(editando ? 'Ejercicio actualizado' : 'Ejercicio creado', 'success'); fetchEjercicios() }}
+          onSaved={() => {
+            setModalOpen(false)
+            setEditando(null)
+            toast(editando ? 'Ejercicio actualizado' : 'Ejercicio creado', 'success')
+            fetchEjercicios()
+          }}
           onCancel={() => { setModalOpen(false); setEditando(null) }}
         />
       </Modal>
 
       <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Confirmar eliminación">
-        <p className="text-sm text-muted-foreground mb-6">¿Desactivar el ejercicio <strong>{confirmDelete?.nombre}</strong>?</p>
+        <p className="text-sm text-muted-foreground mb-6">
+          ¿Desactivar el ejercicio <strong>{confirmDelete?.nombre}</strong>?
+        </p>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
           <Button variant="destructive" onClick={handleDelete}>Desactivar</Button>
