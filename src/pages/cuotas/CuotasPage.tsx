@@ -16,6 +16,7 @@ import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
 import { Trash2, AlertCircle, CreditCard, Plus, RefreshCw, FileDown } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { useNotificacionesStore } from '@/store/notificacionesStore'
 
 const ESTADO_VARIANT: Record<string, 'success' | 'warning' | 'danger'> = {
   PAGADA: 'success',
@@ -66,7 +67,7 @@ export default function CuotasPage() {
     const s = socios.find(x => x.socioId === socioId)
     return s ? `${s.nombre} ${s.apellido}` : `#${socioId}`
   }
-
+  const cargarNotificaciones = useNotificacionesStore(s => s.cargar)
   const nombresMap = (): Record<number, string> => {
     const m: Record<number, string> = {}
     socios.forEach(s => { m[s.socioId] = `${s.nombre} ${s.apellido}` })
@@ -87,6 +88,7 @@ export default function CuotasPage() {
       toast('Pago registrado correctamente', 'success')
       setPagarModal(null)
       fetchCuotas()
+      cargarNotificaciones()
     } catch {
       toast('Error al registrar el pago', 'error')
     } finally {
@@ -117,6 +119,7 @@ export default function CuotasPage() {
       toast('Cuota anulada correctamente', 'success')
       setConfirmDelete(null)
       fetchCuotas()
+      cargarNotificaciones()
     } catch {
       toast('No se puede anular esta cuota', 'error')
     }
