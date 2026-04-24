@@ -24,4 +24,11 @@ export const rutinasService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/rutinas/${id}`)
   },
+    // ✅ NUEVO: descargar PDF
+  descargarPdf: async (socioId: number): Promise<Blob> => {
+    const res = await api.get(`rutinas/socios/${socioId}/rutina/pdf`, {
+      responseType: 'blob', // 🔥 CLAVE
+    })
+    return res.data
+  },
 }

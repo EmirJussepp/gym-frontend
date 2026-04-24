@@ -4,6 +4,7 @@ import { sociosService } from '@/services/socios.service'
 import { cuotasService } from '@/services/cuotas.service'
 import { asistenciasService } from '@/services/asistencias.service'
 import { rutinaSocioService } from '@/services/rutinaSocio.service'
+import { rutinasService } from '@/services/rutinas.service'
 import { rutinaEjercicioService } from '@/services/rutinaEjercicio.service'
 import type { Socio, Cuota, Asistencia } from '@/types'
 import type { RutinaSocioResponse } from '@/services/rutinaSocio.service'
@@ -77,6 +78,79 @@ export default function SocioPerfilPage() {
       setEjercicios([])
     }
   }
+  // Función que genera el texto de la rutina
+function buildRutinaText(
+  socioNombre: string,
+  rutinaNombre: string,
+  ejercicios: RutinaEjercicioDetalle[]
+): string {
+  const lineas = [`🏋️ *Rutina: ${rutinaNombre}*`, `Alumno: ${socioNombre}`, ``]
+
+  // Agrupar por grupo muscular (igual que ya hacés en el render)
+  const porGrupo = ejercicios.reduce<Record<string, RutinaEjercicioDetalle[]>>((acc, ej) => {
+    const g = ej.grupoMuscularNombre || 'Sin grupo'
+    if (!acc[g]) acc[g] = []
+    acc[g].push(ej)
+    return acc
+  }, {})
+
+  for (const [grupo, items] of Object.entries(porGrupo)) {
+    lineas.push(`*${grupo}*`)
+    for (const ej of items) {
+      const detalle = ej.series && ej.repeticiones
+        ? `${ej.series} series × ${ej.repeticiones} reps`
+        : ''
+      const descanso = ej.descansoSeg ? ` | Descanso: ${ej.descansoSeg}s` : ''
+      lineas.push(`• ${ej.ejercicioNombre}${detalle ? ` — ${detalle}` : ''}${descanso}`)
+    }
+    lineas.push(``)
+  }
+
+  return lineas.join('\n')
+}
+
+// Compartir por WhatsApp
+function compartirWhatsApp() {
+  if (!rutinaActiva || !socio) return
+
+  const baseUrl = import.meta.env.VITE_API_URL
+
+  if (!baseUrl) {
+    alert('Falta configurar VITE_API_URL')
+    return
+  }
+
+  const urlPdf = `${baseUrl}/socios/${socioId}/rutina/pdf`
+
+  const texto = `🏋️ *${rutinaActiva.rutinaNombre}*
+
+Alumno: ${socio.nombre} ${socio.apellido}
+
+📄 Ver rutina:
+${urlPdf}
+`
+
+  const tel = socio.telefono?.replace(/\D/g, '')
+
+  const url = tel
+    ? `https://wa.me/${tel}?text=${encodeURIComponent(texto)}`
+    : `https://wa.me/?text=${encodeURIComponent(texto)}`
+
+  window.open(url, '_blank')
+}
+// Compartir por Gmail
+function compartirGmail() {
+  if (!rutinaActiva || !socio) return
+  const texto = buildRutinaText(
+    `${socio.nombre} ${socio.apellido}`,
+    rutinaActiva.rutinaNombre,
+    ejercicios
+  )
+  const asunto = encodeURIComponent(`Tu rutina: ${rutinaActiva.rutinaNombre}`)
+  const cuerpo = encodeURIComponent(texto)
+  const email = socio.email ?? ''
+  window.open(`mailto:${email}?subject=${asunto}&body=${cuerpo}`, '_blank')
+}
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
   if (!socio) return null
@@ -95,7 +169,31 @@ export default function SocioPerfilPage() {
     acc[g].push(ej)
     return acc
   }, {})
+async function descargarPDF() {
+  try {
+    const blob = await rutinasService.descargarPdf(socioId)
 
+    // validar que no esté vacío
+    if (!blob || blob.size === 0) {
+      throw new Error('PDF vacío')
+    }
+
+    const url = window.URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `rutina-${socio?.apellido}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+
+  } catch (e) {
+    console.error(e)
+    alert('No se pudo descargar el PDF')
+  }
+}
   return (
     <div className="max-w-5xl mx-auto space-y-6">
 
@@ -308,9 +406,27 @@ export default function SocioPerfilPage() {
                     Asignar rutina
                   </Button>
                 </div>
+                
               )}
             </CardContent>
           </Card>
+{rutinaActiva && ejercicios.length > 0 && (
+  <div className="flex gap-2">
+<Button variant="outline" size="sm" onClick={compartirWhatsApp}>
+  <Phone className="h-3.5 w-3.5" />
+  WhatsApp
+</Button>
+
+    <Button variant="outline" size="sm" onClick={compartirGmail}>
+      <Mail className="h-3.5 w-3.5" />
+      Gmail
+    </Button>
+
+    <Button variant="outline" size="sm" onClick={descargarPDF}>
+      Descargar PDF
+    </Button>
+  </div>
+)}
 
           {/* Cuotas recientes */}
           <Card>
