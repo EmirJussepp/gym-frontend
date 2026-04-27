@@ -74,27 +74,42 @@ export default function CuotasPage() {
     return m
   }
 
-  const abrirPago = (cuota: Cuota) => {
-    setPagarModal(cuota)
-    setMontoPago(String(cuota.monto))
-    setMetodoPagoId(metodosPago[0]?.id ? String(metodosPago[0].id) : '')
+const abrirPago = (cuota: Cuota) => {
+  setPagarModal(cuota)
+  setMontoPago(String(cuota.monto))
+  const primerMetodo = metodosPago[0]
+  setMetodoPagoId(primerMetodo?.id ? String(primerMetodo.id) : '')
+}
+const handlePagar = async () => {
+
+  console.log('metodoPagoId state:', metodoPagoId)
+  console.log('metodosPago disponibles:', metodosPago)
+  if (!pagarModal || !metodoPagoId) return
+
+  const metodoId = Number(metodoPagoId)
+  if (isNaN(metodoId) || metodoId <= 0) {
+    return toast('Seleccioná un método de pago', 'error')
   }
 
-  const handlePagar = async () => {
-    if (!pagarModal || !metodoPagoId) return
-    setPagando(true)
-    try {
-      await cuotasService.pagar(pagarModal.cuotaId, Number(metodoPagoId), Number(montoPago))
-      toast('Pago registrado correctamente', 'success')
-      setPagarModal(null)
-      fetchCuotas()
-      cargarNotificaciones()
-    } catch {
-      toast('Error al registrar el pago', 'error')
-    } finally {
-      setPagando(false)
-    }
+  if (!montoPago || Number(montoPago) <= 0) {
+    return toast('Monto inválido', 'error')
   }
+
+  setPagando(true)
+  try {
+    await cuotasService.pagar(pagarModal.cuotaId, metodoId, Number(montoPago))  // ✅ only this line
+
+    toast('Pago registrado correctamente', 'success')
+    setPagarModal(null)
+    await fetchCuotas()
+    cargarNotificaciones()
+  } catch (e: any) {
+    console.error(e)
+    toast(e?.response?.data?.error || 'Error al registrar el pago', 'error')
+  } finally {
+    setPagando(false)
+  }
+}
 
   const handleGenerar = async () => {
     const [anio, mes] = periodoInput.split('-').map(Number)
@@ -269,17 +284,23 @@ export default function CuotasPage() {
               No hay métodos de pago configurados. Creá uno en Configuración → Métodos de pago.
             </div>
           ) : (
-            <Select
-              id="metodoPago"
-              label="Método de pago"
-              value={metodoPagoId}
-              onChange={e => setMetodoPagoId(e.target.value)}
-            >
-              <option value="">Seleccioná un método...</option>
-              {metodosPago.map(m => (
-                <option key={m.id} value={m.id}>{m.nombre}</option>
-              ))}
-            </Select>
+
+<Select
+  id="metodoPago"
+  label="Método de pago"
+  value={metodoPagoId}
+  onChange={e => setMetodoPagoId(e.target.value)}
+>
+  <option value="">Seleccioná un método...</option>
+
+ {metodosPago.map((m) => (
+  <option key={`metodo-${m.metodoPagoId}`} value={String(m.metodoPagoId)}>
+    {m.nombre}
+  </option>
+
+))}
+
+</Select>
           )}
           <Input
             id="monto"
