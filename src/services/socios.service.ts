@@ -2,8 +2,19 @@ import api from '@/lib/axios'
 import type { Socio, SocioRequest, PaginadoResponse } from '@/types'
 
 export const sociosService = {
-  getAll: async (pagina = 1, porPagina = 10): Promise<PaginadoResponse<Socio>> => {
-    const res = await api.get(`/socios?pagina=${pagina}&porPagina=${porPagina}`)
+  getAll: async (
+    pagina = 1,
+    porPagina = 10,
+    filtros?: { busqueda?: string; estado?: string; planId?: number }
+  ): Promise<PaginadoResponse<Socio>> => {
+    const params = new URLSearchParams({
+      pagina: String(pagina),
+      porPagina: String(porPagina),
+    })
+    if (filtros?.busqueda) params.set("busqueda", filtros.busqueda)
+    if (filtros?.estado)   params.set("estado",   filtros.estado)
+    if (filtros?.planId)   params.set("planId",   String(filtros.planId))
+    const res = await api.get(`/socios?${params.toString()}`)
     return res.data
   },
 
