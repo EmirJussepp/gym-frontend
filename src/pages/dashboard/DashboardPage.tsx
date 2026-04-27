@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const [deudores, setDeudores]           = useState<Cuota[]>([])
   const [sociosRecientes, setSociosRecientes] = useState<Socio[]>([])
   const [estadisticas, setEstadisticas]   = useState<EstadisticasMes[]>([])
-  const [anioSeleccionado]                = useState(new Date().getFullYear())
+  const [anioSeleccionado, setAnioSeleccionado] = useState(new Date().getFullYear())
 
   useEffect(() => {
     const fetch = async () => {
@@ -125,13 +125,41 @@ export default function DashboardPage() {
     <div className="space-y-6">
 
       {/* Bienvenida */}
-      <div>
-        <h1 className="font-display text-3xl font-bold">
-          {saludo}, {usuario?.nombre} 👋
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Resumen del gimnasio — {anioSeleccionado}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-bold">
+            {saludo}, {usuario?.nombre} 👋
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Resumen del gimnasio
+          </p>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+          {[anioSeleccionado - 1, anioSeleccionado, anioSeleccionado === new Date().getFullYear() ? null : anioSeleccionado + 1]
+            .filter(Boolean)
+            .map(anio => (
+              <button
+                key={anio}
+                onClick={() => setAnioSeleccionado(anio!)}
+                className={[
+                  "px-3 py-1 rounded-md text-sm font-medium transition-colors",
+                  anio === anioSeleccionado
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                ].join(" ")}
+              >
+                {anio}
+              </button>
+            ))}
+          {anioSeleccionado < new Date().getFullYear() && (
+            <button
+              onClick={() => setAnioSeleccionado(new Date().getFullYear())}
+              className="px-3 py-1 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+            >
+              {new Date().getFullYear()}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}

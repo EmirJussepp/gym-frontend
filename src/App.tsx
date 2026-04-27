@@ -16,6 +16,7 @@ import UsuariosPage from '@/pages/usuarios/UsuariosPage'
 import SocioPerfilPage from '@/pages/socios/SocioPerfilPage'
 import MetodosPagoPage from '@/pages/metodosPago/MetodosPagoPage'
 import BibliotecaPage from '@/pages/ejercicios/BibliotecaPage'
+import ConfiguracionPage from '@/pages/configuracion/ConfiguracionPage'
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="socios/:id" element={<SocioPerfilPage />} />
           <Route path="metodos-pago" element={<MetodosPagoPage />} />
           <Route path="biblioteca" element={<BibliotecaPage />} />
+          <Route path="configuracion" element={<ConfiguracionPage />} />
 
         </Route>
 

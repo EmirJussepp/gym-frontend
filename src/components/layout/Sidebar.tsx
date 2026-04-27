@@ -6,8 +6,8 @@ import { useNotificacionesStore } from '@/store/notificacionesStore'
 import {
   LayoutDashboard, Users, CreditCard,
   Dumbbell, CalendarCheck, LogOut, ChevronRight,
- Shield, Clock, RotateCcw, UserCog,
-  Wallet, Settings, AlertCircle
+  Shield, Clock, RotateCcw, UserCog,
+  Wallet, Settings, AlertCircle, Search
 } from 'lucide-react'
 
 const NAV_MAIN = [
@@ -28,7 +28,6 @@ const NAV_CONFIG = [
   { to: '/usuarios',     label: 'Usuarios',         icon: UserCog },
   { to: '/roles',        label: 'Roles',             icon: Shield },
   { to: '/metodos-pago', label: 'Métodos de pago',  icon: Wallet },
-  { to: '/configuracion',label: 'Configuración',     icon: Settings },
 ]
 
 function NavGroup({
@@ -92,13 +91,20 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-border px-6 shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <Dumbbell className="h-4 w-4 text-white" />
+      <div className="flex h-20 items-center gap-3 border-b border-border px-4 shrink-0">
+        <img
+          src="/logoaerogym.jpg"
+          alt="Aero Gym"
+          className="h-12 w-auto object-contain shrink-0"
+        />
+        <div className="flex flex-col leading-tight">
+          <span className="text-lg font-bold tracking-wide" style={{ color: '#E8922A' }}>
+            AERO GYM
+          </span>
+          <span className="text-[10px] text-muted-foreground tracking-widest uppercase">
+            Since 2026
+          </span>
         </div>
-        <span className="font-display text-lg font-bold leading-tight truncate">
-          {localStorage.getItem('gym_nombre') ?? 'GymApp'}
-        </span>
       </div>
 
       {/* Alerta si hay cuotas pendientes */}
@@ -110,6 +116,23 @@ export function Sidebar() {
           </p>
         </div>
       )}
+
+      {/* Cmd+K hint */}
+      <div className="mx-3 mt-3">
+        <button
+          onClick={() => {
+            const e = new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })
+            window.dispatchEvent(e)
+          }}
+          className="w-full flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left text-xs">Buscar socio...</span>
+          <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-[10px]">
+            ⌘K
+          </kbd>
+        </button>
+      </div>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">

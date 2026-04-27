@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Dumbbell } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
@@ -17,8 +16,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
-  const navigate = useNavigate()
-  const login = useAuthStore((s) => s.login)
+  const navigate  = useNavigate()
+  const login     = useAuthStore((s) => s.login)
   const [error, setError] = useState('')
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -39,13 +38,17 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
+
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg mb-4">
-            <Dumbbell className="h-7 w-7 text-white" />
+          <div className="bg-white rounded-2xl shadow-md px-8 py-5 mb-5 flex items-center justify-center">
+            <img
+              src="/logoaerogym.jpg"
+              alt="Aero Gym"
+              className="h-16 w-auto object-contain"
+            />
           </div>
-          <h1 className="font-display text-3xl font-bold">GestionatuGym</h1>
-          <p className="text-muted-foreground text-sm mt-1">Ingresá a tu cuenta</p>
+          <p className="text-muted-foreground text-sm">Ingresá a tu cuenta</p>
         </div>
 
         {/* Form */}
@@ -77,6 +80,10 @@ export default function LoginPage() {
             </Button>
           </form>
         </div>
+
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          Aero Gym · Since 2014
+        </p>
       </div>
     </div>
   )
