@@ -99,10 +99,10 @@ export default function SocioPerfilPage() {
           const ejs = await rutinaEjercicioService.getByRutina(rutina.rutinaId)
           setEjercicios(ejs)
         }
-      } catch {
-        toast('No se pudo cargar el perfil del socio', 'error')
-        setTimeout(() => navigate('/socios'), 2000)
-      } finally {
+     } catch (e) {
+  console.error('Error cargando perfil:', e)
+  // No redirigir si igual cargó el socio
+} finally {
         setLoading(false)
       }
     }
