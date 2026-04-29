@@ -340,10 +340,9 @@ const handlePagar = async () => {
   <option value="">Seleccioná un método...</option>
 
  {metodosPago.map((m) => (
-  <option key={`metodo-${m.metodoPagoId}`} value={String(m.metodoPagoId)}>
+  <option key={`metodo-${m.id}`} value={String(m.id)}>
     {m.nombre}
   </option>
-
 ))}
 
 </Select>

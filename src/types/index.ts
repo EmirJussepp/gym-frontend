@@ -82,6 +82,7 @@ export interface Ejercicio {
   nombre: string
   grupoMuscularId: number
   descripcion?: string
+  imagenUrl?: string
   activo: boolean
 }
 
@@ -89,7 +90,14 @@ export interface EjercicioRequest {
   nombre: string
   grupoMuscularId: number
   descripcion?: string
+  imagenUrl?: string
   activo?: boolean
+}
+
+export interface WgerOpcion {
+  nombre: string
+  imagenUrl: string
+  wgerBaseId: number
 }
 
 // ─── Grupos Musculares ───────────────────────────────────────────────────────

@@ -79,6 +79,7 @@ export default function EjerciciosPage() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableTh>Img</TableTh>
                 <TableTh>Nombre</TableTh>
                 <TableTh>Grupo muscular</TableTh>
                 <TableTh>Descripción</TableTh>
@@ -90,6 +91,13 @@ export default function EjerciciosPage() {
             <TableBody>
               {ejercicios.map((e) => (
                 <TableRow key={e.ejercicioId}>
+                  <TableTd>
+                    {e.imagenUrl ? (
+                      <img src={e.imagenUrl} alt={e.nombre} className="h-9 w-9 object-contain rounded" />
+                    ) : (
+                      <div className="h-9 w-9 rounded bg-muted flex items-center justify-center text-muted-foreground text-xs">—</div>
+                    )}
+                  </TableTd>
                   <TableTd className="font-medium">{e.nombre}</TableTd>
 
                   {/* ✅ CORREGIDO */}
