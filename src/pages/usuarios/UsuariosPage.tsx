@@ -13,31 +13,40 @@ import { Select } from '@/components/ui/Select'
 import { Table, TableHead, TableBody, TableRow, TableTh, TableTd } from '@/components/ui/Table'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
-import { Plus, Trash2, AlertCircle, UserCog } from 'lucide-react'
+import { Plus, Trash2, AlertCircle, UserCog, Pencil, RotateCcw } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
-const schema = z.object({
+const schemaCrear = z.object({
   nombre:   z.string().min(2, 'Mínimo 2 caracteres'),
   email:    z.string().email('Email inválido'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
   roleId:   z.string().optional(),
 })
 
-type FormData = z.infer<typeof schema>
+const schemaEditar = z.object({
+  nombre:   z.string().min(2, 'Mínimo 2 caracteres'),
+  email:    z.string().email('Email inválido'),
+  roleId:   z.string().optional(),
+  activo:   z.boolean().optional(),
+  password: z.string().min(6, 'Mínimo 6 caracteres').optional().or(z.literal('')),
+})
+
+type FormCrear  = z.infer<typeof schemaCrear>
+type FormEditar = z.infer<typeof schemaEditar>
 
 export default function UsuariosPage() {
-  const [usuarios, setUsuarios]         = useState<UsuarioConRol[]>([])
-  const [roles, setRoles]               = useState<Rol[]>([])
-  const [loading, setLoading]           = useState(true)
-  const [modalOpen, setModalOpen]       = useState(false)
+  const [usuarios, setUsuarios]           = useState<UsuarioConRol[]>([])
+  const [roles, setRoles]                 = useState<Rol[]>([])
+  const [loading, setLoading]             = useState(true)
+  const [modalCrear, setModalCrear]       = useState(false)
+  const [editando, setEditando]           = useState<UsuarioConRol | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<UsuarioConRol | null>(null)
-  const { toasts, toast, dismiss }      = useToast()
+  const { toasts, toast, dismiss }        = useToast()
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-  })
+  const formCrear = useForm<FormCrear>({ resolver: zodResolver(schemaCrear) })
+  const formEditar = useForm<FormEditar>({ resolver: zodResolver(schemaEditar) })
 
   const fetchUsuarios = useCallback(async () => {
     setLoading(true)
@@ -56,7 +65,12 @@ export default function UsuariosPage() {
     rolesService.getAll().then(setRoles).catch(() => {})
   }, [])
 
-  const onSubmit = async (data: FormData) => {
+  const abrirEditar = (u: UsuarioConRol) => {
+    setEditando(u)
+    formEditar.reset({ nombre: u.nombre, email: u.email, roleId: u.roleId ? String(u.roleId) : '', activo: u.activo })
+  }
+
+  const onSubmitCrear = async (data: FormCrear) => {
     try {
       await usuariosService.crear({
         nombre:   data.nombre,
@@ -65,11 +79,29 @@ export default function UsuariosPage() {
         roleId:   data.roleId ? Number(data.roleId) : undefined,
       })
       toast('Usuario creado correctamente', 'success')
-      setModalOpen(false)
-      reset()
+      setModalCrear(false)
+      formCrear.reset()
       fetchUsuarios()
     } catch {
       toast('Error al crear usuario', 'error')
+    }
+  }
+
+  const onSubmitEditar = async (data: FormEditar) => {
+    if (!editando) return
+    try {
+      await usuariosService.update(editando.userId!, {
+        nombre:   data.nombre,
+        email:    data.email,
+        roleId:   data.roleId ? Number(data.roleId) : undefined,
+        activo:   data.activo ?? editando.activo,
+        password: data.password || undefined,
+      })
+      toast('Usuario actualizado', 'success')
+      setEditando(null)
+      fetchUsuarios()
+    } catch {
+      toast('Error al actualizar usuario', 'error')
     }
   }
 
@@ -85,6 +117,21 @@ export default function UsuariosPage() {
     }
   }
 
+  const handleReactivar = async (u: UsuarioConRol) => {
+    try {
+      await usuariosService.update(u.userId!, {
+        nombre: u.nombre,
+        email:  u.email,
+        roleId: u.roleId ?? undefined,
+        activo: true,
+      })
+      toast(`${u.nombre} reactivado`, 'success')
+      fetchUsuarios()
+    } catch {
+      toast('Error al reactivar usuario', 'error')
+    }
+  }
+
   const rolNombre = (roleId: number | null) =>
     roles.find(r => r.roleId === roleId)?.nombre ?? '—'
 
@@ -94,7 +141,7 @@ export default function UsuariosPage() {
         title="Usuarios del sistema"
         subtitle="Administradores y operadores"
         action={
-          <Button onClick={() => { reset(); setModalOpen(true) }}>
+          <Button onClick={() => { formCrear.reset(); setModalCrear(true) }}>
             <Plus className="h-4 w-4" /> Nuevo usuario
           </Button>
         }
@@ -137,11 +184,20 @@ export default function UsuariosPage() {
                       </Badge>
                     </TableTd>
                     <TableTd>
-                      {u.activo && (
-                        <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(u)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" title="Editar" onClick={() => abrirEditar(u)}>
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                      )}
+                        {u.activo ? (
+                          <Button variant="ghost" size="icon" title="Desactivar" onClick={() => setConfirmDelete(u)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="icon" title="Reactivar" onClick={() => handleReactivar(u)}>
+                            <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
+                          </Button>
+                        )}
+                      </div>
                     </TableTd>
                   </TableRow>
                 ))}
@@ -152,43 +208,50 @@ export default function UsuariosPage() {
       )}
 
       {/* Modal crear */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo usuario">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Input
-            id="nombre"
-            label="Nombre completo"
-            placeholder="Juan Pérez"
-            error={errors.nombre?.message}
-            {...register('nombre')}
-          />
-          <Input
-            id="email"
-            label="Email"
-            type="email"
-            placeholder="juan@gym.com"
-            error={errors.email?.message}
-            {...register('email')}
-          />
-          <Input
-            id="password"
-            label="Contraseña"
-            type="password"
-            placeholder="Mínimo 6 caracteres"
-            error={errors.password?.message}
-            {...register('password')}
-          />
-          <Select id="roleId" label="Rol" {...register('roleId')}>
+      <Modal open={modalCrear} onClose={() => setModalCrear(false)} title="Nuevo usuario">
+        <form onSubmit={formCrear.handleSubmit(onSubmitCrear)} className="space-y-4">
+          <Input id="nombre" label="Nombre completo" placeholder="Juan Pérez"
+            error={formCrear.formState.errors.nombre?.message} {...formCrear.register('nombre')} />
+          <Input id="email" label="Email" type="email" placeholder="juan@gym.com"
+            error={formCrear.formState.errors.email?.message} {...formCrear.register('email')} />
+          <Input id="password" label="Contraseña" type="password" placeholder="Mínimo 6 caracteres"
+            error={formCrear.formState.errors.password?.message} {...formCrear.register('password')} />
+          <Select id="roleId" label="Rol" {...formCrear.register('roleId')}>
             <option value="">Sin rol asignado</option>
-            {roles.map(r => (
-              <option key={r.roleId} value={r.roleId}>{r.nombre}</option>
-            ))}
+            {roles.map(r => <option key={r.roleId} value={r.roleId}>{r.nombre}</option>)}
           </Select>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
-              Cancelar
+            <Button type="button" variant="outline" onClick={() => setModalCrear(false)}>Cancelar</Button>
+            <Button type="submit" disabled={formCrear.formState.isSubmitting}>
+              {formCrear.formState.isSubmitting ? 'Creando...' : 'Crear usuario'}
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creando...' : 'Crear usuario'}
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal editar */}
+      <Modal open={!!editando} onClose={() => setEditando(null)} title="Editar usuario">
+        <form onSubmit={formEditar.handleSubmit(onSubmitEditar)} className="space-y-4">
+          <Input id="edit-nombre" label="Nombre completo"
+            error={formEditar.formState.errors.nombre?.message} {...formEditar.register('nombre')} />
+          <Input id="edit-email" label="Email" type="email"
+            error={formEditar.formState.errors.email?.message} {...formEditar.register('email')} />
+          <Select id="edit-roleId" label="Rol" {...formEditar.register('roleId')}>
+            <option value="">Sin rol asignado</option>
+            {roles.map(r => <option key={r.roleId} value={r.roleId}>{r.nombre}</option>)}
+          </Select>
+          <Input
+            id="edit-password"
+            label="Nueva contraseña"
+            type="password"
+            placeholder="Dejá vacío para no cambiarla"
+            error={formEditar.formState.errors.password?.message}
+            {...formEditar.register('password')}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setEditando(null)}>Cancelar</Button>
+            <Button type="submit" disabled={formEditar.formState.isSubmitting}>
+              {formEditar.formState.isSubmitting ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </div>
         </form>

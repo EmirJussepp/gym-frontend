@@ -17,6 +17,7 @@ import SocioPerfilPage from '@/pages/socios/SocioPerfilPage'
 import MetodosPagoPage from '@/pages/metodosPago/MetodosPagoPage'
 import BibliotecaPage from '@/pages/ejercicios/BibliotecaPage'
 import ConfiguracionPage from '@/pages/configuracion/ConfiguracionPage'
+import NotFoundPage from '@/pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -50,7 +51,7 @@ export default function App() {
 
         </Route>
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

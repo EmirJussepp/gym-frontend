@@ -17,6 +17,11 @@ export const rolesService = {
     return res.data
   },
 
+  update: async (id: number, nombre: string, descripcion?: string): Promise<Rol> => {
+    const res = await api.put(`/roles/${id}`, { nombre, descripcion })
+    return res.data
+  },
+
   delete: async (id: number): Promise<void> => {
     await api.delete(`/roles/${id}`)
   },

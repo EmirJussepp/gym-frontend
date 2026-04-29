@@ -7,13 +7,14 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { sociosService } from '@/services/socios.service'
 import { cuotasService } from '@/services/cuotas.service'
+import { rutinasService } from '@/services/rutinas.service'
 import { estadisticasService, type EstadisticasMes } from '@/services/estadisticas.service'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, CreditCard, AlertCircle,
   ChevronRight, TrendingUp, TrendingDown
 } from 'lucide-react'
-import type { Cuota, Socio } from '@/types'
+import type { Cuota, Socio, Rutina } from '@/types'
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [stats, setStats]                 = useState({ socios: 0, rutinas: 0, deudores: 0, cobradoMes: 0 })
   const [deudores, setDeudores]           = useState<Cuota[]>([])
   const [sociosRecientes, setSociosRecientes] = useState<Socio[]>([])
+  const [sociosMap, setSociosMap]         = useState<Record<number, string>>({})
   const [estadisticas, setEstadisticas]   = useState<EstadisticasMes[]>([])
   const [anioSeleccionado, setAnioSeleccionado] = useState(new Date().getFullYear())
 
@@ -39,11 +41,12 @@ export default function DashboardPage() {
         const now = new Date()
         const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
-        const [socios, cuotasPeriodo, sociosData, estData] = await Promise.all([
+        const [socios, cuotasPeriodo, sociosData, estData, rutinasData] = await Promise.all([
           sociosService.getAll(1, 1),
           cuotasService.getByPeriodo(periodo),
           sociosService.getAll(1, 5),
           estadisticasService.getAnio(anioSeleccionado),
+          rutinasService.getAll(1, 1),
         ])
 
         const pendientes  = cuotasPeriodo.filter(c => c.estado !== 'PAGADA')
@@ -53,12 +56,25 @@ export default function DashboardPage() {
 
         setStats({
           socios:     socios.total,
-          rutinas:    0,
+          rutinas:    rutinasData.total,
           deudores:   pendientes.length,
           cobradoMes,
         })
-        setDeudores(pendientes.slice(0, 5))
+
+        const top5Pendientes = pendientes.slice(0, 5)
+        setDeudores(top5Pendientes)
         setSociosRecientes(sociosData.data)
+
+        // Cargar nombres de socios deudores
+        if (top5Pendientes.length > 0) {
+          const ids = [...new Set(top5Pendientes.map(c => c.socioId))]
+          const sociosDeudores = await Promise.all(ids.map(id => sociosService.getById(id).catch(() => null)))
+          const map: Record<number, string> = {}
+          sociosDeudores.forEach(s => {
+            if (s) map[s.socioId] = `${s.nombre} ${s.apellido}`
+          })
+          setSociosMap(map)
+        }
         setEstadisticas(estData)
       } catch {
         // silencioso
@@ -270,7 +286,7 @@ export default function DashboardPage() {
                   {deudores.map(c => (
                     <div key={c.cuotaId} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
                       <div>
-                        <p className="text-sm font-medium">Socio #{c.socioId}</p>
+                        <p className="text-sm font-medium">{sociosMap[c.socioId] ?? `Socio #${c.socioId}`}</p>
                         <p className="text-xs text-muted-foreground">Vence {formatDate(c.fechaVencimiento)}</p>
                       </div>
                       <div className="flex items-center gap-2">

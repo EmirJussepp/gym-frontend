@@ -36,21 +36,14 @@ export function CommandPalette() {
     }
   }, [open])
 
-  // Buscar con debounce
+  // Buscar con debounce — búsqueda server-side para encontrar cualquier socio
   useEffect(() => {
     if (!query.trim()) { setResults([]); return }
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await sociosService.getAll(1, 20)
-        const q = query.toLowerCase()
-        const filtrados = res.data.filter(s =>
-          `${s.nombre} ${s.apellido}`.toLowerCase().includes(q) ||
-          s.dni.includes(q) ||
-          s.email?.toLowerCase().includes(q) ||
-          s.telefono?.includes(q)
-        )
-        setResults(filtrados.slice(0, 8))
+        const res = await sociosService.getAll(1, 8, { busqueda: query.trim() })
+        setResults(res.data)
         setSelected(0)
       } catch {
         setResults([])

@@ -15,11 +15,14 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Si el servidor devuelve 401, logout automático
+// Si el servidor devuelve 401 y hay sesión activa → logout + redirect
+let redirecting = false
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    const tieneToken = !!useAuthStore.getState().token
+    if (error.response?.status === 401 && tieneToken && !redirecting) {
+      redirecting = true
       useAuthStore.getState().logout()
       window.location.href = '/login'
     }

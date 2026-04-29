@@ -33,6 +33,10 @@ export const cuotasService = {
     return res.data
   },
 
+  update: async (cuotaId: number, data: { monto?: number; estado?: string; fechaVencimiento?: string }): Promise<void> => {
+    await api.put(`/cuotas/${cuotaId}`, data)
+  },
+
   delete: async (cuotaId: number): Promise<void> => {
     await api.delete(`/cuotas/${cuotaId}`)
   },

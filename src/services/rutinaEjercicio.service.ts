@@ -38,6 +38,10 @@ export const rutinaEjercicioService = {
     return res.data
   },
 
+  update: async (rutinaId: number, id: number, data: { series?: number; repeticiones?: string; descansoSeg?: number; orden?: number }): Promise<void> => {
+    await api.put(`/rutinas/${rutinaId}/ejercicios/${id}`, data)
+  },
+
   eliminar: async (rutinaId: number, id: number): Promise<void> => {
     await api.delete(`/rutinas/${rutinaId}/ejercicios/${id}`)
   },

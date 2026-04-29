@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Table, TableHead, TableBody, TableRow, TableTh, TableTd } from '@/components/ui/Table'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
-import { Plus, Trash2, AlertCircle, Wallet } from 'lucide-react'
+import { Plus, Trash2, AlertCircle, Wallet, Pencil } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,11 +19,12 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function MetodosPagoPage() {
-  const [metodos, setMetodos]           = useState<MetodoPago[]>([])
-  const [loading, setLoading]           = useState(true)
-  const [modalOpen, setModalOpen]       = useState(false)
+  const [metodos, setMetodos]             = useState<MetodoPago[]>([])
+  const [loading, setLoading]             = useState(true)
+  const [modalOpen, setModalOpen]         = useState(false)
+  const [editando, setEditando]           = useState<MetodoPago | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<MetodoPago | null>(null)
-  const { toasts, toast, dismiss }      = useToast()
+  const { toasts, toast, dismiss }        = useToast()
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -43,15 +44,27 @@ export default function MetodosPagoPage() {
 
   useEffect(() => { fetchMetodos() }, [fetchMetodos])
 
+  const abrirEditar = (m: MetodoPago) => {
+    setEditando(m)
+    reset({ nombre: m.nombre })
+    setModalOpen(true)
+  }
+
   const onSubmit = async (data: FormData) => {
     try {
-      await metodosPagoService.create(data.nombre)
-      toast('Método de pago creado', 'success')
+      if (editando) {
+        await metodosPagoService.update(editando.id, data.nombre)
+        toast('Método de pago actualizado', 'success')
+      } else {
+        await metodosPagoService.create(data.nombre)
+        toast('Método de pago creado', 'success')
+      }
       setModalOpen(false)
+      setEditando(null)
       reset()
       fetchMetodos()
     } catch {
-      toast('Error al crear método de pago', 'error')
+      toast(editando ? 'Error al actualizar' : 'Error al crear método de pago', 'error')
     }
   }
 
@@ -74,7 +87,7 @@ export default function MetodosPagoPage() {
         title="Métodos de pago"
         subtitle={`${metodos.length} métodos configurados`}
         action={
-          <Button onClick={() => { reset(); setModalOpen(true) }}>
+          <Button onClick={() => { setEditando(null); reset({ nombre: '' }); setModalOpen(true) }}>
             <Plus className="h-4 w-4" /> Nuevo método
           </Button>
         }
@@ -111,8 +124,11 @@ export default function MetodosPagoPage() {
                   </div>
                 </TableTd>
                 <TableTd>
-                  <div className="flex justify-end">
-                    <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(m)}>
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" title="Editar" onClick={() => abrirEditar(m)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Eliminar" onClick={() => setConfirmDelete(m)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>
@@ -123,8 +139,8 @@ export default function MetodosPagoPage() {
         </Table>
       )}
 
-      {/* Modal crear */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo método de pago">
+      {/* Modal crear / editar */}
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setEditando(null) }} title={editando ? 'Editar método de pago' : 'Nuevo método de pago'}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Input
             id="nombre"
@@ -134,11 +150,11 @@ export default function MetodosPagoPage() {
             {...register('nombre')}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => { setModalOpen(false); setEditando(null) }}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creando...' : 'Crear método'}
+              {isSubmitting ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear método'}
             </Button>
           </div>
         </form>

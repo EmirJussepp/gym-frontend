@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { cuotasService } from '@/services/cuotas.service'
 import { metodosPagoService, type MetodoPago } from '@/services/metodosPago.service'
 import { sociosService } from '@/services/socios.service'
 import { exportarCuotasPDF, exportarDeudoresPDF } from '@/lib/pdf'
-import type { Cuota, Socio } from '@/types'
+import type { Cuota } from '@/types'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -14,9 +14,10 @@ import { Select } from '@/components/ui/Select'
 import { Table, TableHead, TableBody, TableRow, TableTh, TableTd } from '@/components/ui/Table'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
-import { Trash2, AlertCircle, CreditCard, Plus, RefreshCw, FileDown } from 'lucide-react'
+import { Trash2, AlertCircle, CreditCard, Plus, RefreshCw, FileDown, Pencil } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { useNotificacionesStore } from '@/store/notificacionesStore'
+import { useIsAdmin } from '@/hooks/useRole'
 
 const ESTADO_VARIANT: Record<string, 'success' | 'warning' | 'danger'> = {
   PAGADA: 'success',
@@ -25,8 +26,10 @@ const ESTADO_VARIANT: Record<string, 'success' | 'warning' | 'danger'> = {
 }
 
 export default function CuotasPage() {
+  const esAdmin                         = useIsAdmin()
   const [cuotas, setCuotas]             = useState<Cuota[]>([])
-  const [socios, setSocios]             = useState<Socio[]>([])
+  const [sociosNombres, setSociosNombres] = useState<Record<number, string>>({})
+  const sociosCacheRef                  = useRef<Record<number, string>>({})
   const [metodosPago, setMetodosPago]   = useState<MetodoPago[]>([])
   const [loading, setLoading]           = useState(true)
   const [periodoInput, setPeriodoInput] = useState(() => {
@@ -35,6 +38,11 @@ export default function CuotasPage() {
   })
   const [periodo, setPeriodo]           = useState(periodoInput)
   const [confirmDelete, setConfirmDelete] = useState<Cuota | null>(null)
+  const [editModal, setEditModal]       = useState<Cuota | null>(null)
+  const [editMonto, setEditMonto]       = useState('')
+  const [editFechaVenc, setEditFechaVenc] = useState('')
+  const [editEstado, setEditEstado]     = useState('')
+  const [editando, setEditando]         = useState(false)
   const [pagarModal, setPagarModal]     = useState<Cuota | null>(null)
   const [generarModal, setGenerarModal] = useState(false)
   const [metodoPagoId, setMetodoPagoId] = useState('')
@@ -49,6 +57,17 @@ export default function CuotasPage() {
     try {
       const res = await cuotasService.getByPeriodo(periodo)
       setCuotas(res)
+      // Resolver nombres de socios sin duplicar requests
+      const idsNuevos = [...new Set(res.map(c => c.socioId))].filter(id => !sociosCacheRef.current[id])
+      if (idsNuevos.length > 0) {
+        const results = await Promise.all(idsNuevos.map(id => sociosService.getById(id).catch(() => null)))
+        const nuevos: Record<number, string> = {}
+        results.forEach(s => {
+          if (s) nuevos[s.socioId] = `${s.nombre} ${s.apellido}`
+        })
+        sociosCacheRef.current = { ...sociosCacheRef.current, ...nuevos }
+        setSociosNombres(prev => ({ ...prev, ...nuevos }))
+      }
     } catch {
       toast('Error al cargar cuotas', 'error')
     } finally {
@@ -60,18 +79,36 @@ export default function CuotasPage() {
 
   useEffect(() => {
     metodosPagoService.getAll().then(setMetodosPago).catch(() => {})
-    sociosService.getAll(1, 200).then(r => setSocios(r.data)).catch(() => {})
   }, [])
 
-  const nombreSocio = (socioId: number) => {
-    const s = socios.find(x => x.socioId === socioId)
-    return s ? `${s.nombre} ${s.apellido}` : `#${socioId}`
-  }
+  const nombreSocio = (socioId: number) => sociosNombres[socioId] ?? `#${socioId}`
   const cargarNotificaciones = useNotificacionesStore(s => s.cargar)
-  const nombresMap = (): Record<number, string> => {
-    const m: Record<number, string> = {}
-    socios.forEach(s => { m[s.socioId] = `${s.nombre} ${s.apellido}` })
-    return m
+  const nombresMap = (): Record<number, string> => ({ ...sociosNombres })
+
+  const abrirEditar = (cuota: Cuota) => {
+    setEditModal(cuota)
+    setEditMonto(String(cuota.monto))
+    setEditFechaVenc(cuota.fechaVencimiento)
+    setEditEstado(cuota.estado)
+  }
+
+  const handleEditar = async () => {
+    if (!editModal) return
+    setEditando(true)
+    try {
+      await cuotasService.update(editModal.cuotaId, {
+        monto:            Number(editMonto),
+        estado:           editEstado,
+        fechaVencimiento: editFechaVenc || undefined,
+      })
+      toast('Cuota actualizada', 'success')
+      setEditModal(null)
+      fetchCuotas()
+    } catch {
+      toast('Error al actualizar la cuota', 'error')
+    } finally {
+      setEditando(false)
+    }
   }
 
 const abrirPago = (cuota: Cuota) => {
@@ -181,9 +218,11 @@ const handlePagar = async () => {
             >
               <FileDown className="h-4 w-4" /> Exportar deudores
             </Button>
-            <Button onClick={() => setGenerarModal(true)}>
-              <Plus className="h-4 w-4" /> Generar cuotas
-            </Button>
+            {esAdmin && (
+              <Button onClick={() => setGenerarModal(true)}>
+                <Plus className="h-4 w-4" /> Generar cuotas
+              </Button>
+            )}
           </div>
         }
       />
@@ -257,9 +296,16 @@ const handlePagar = async () => {
                             <Button size="sm" onClick={() => abrirPago(c)}>
                               <CreditCard className="h-3.5 w-3.5" /> Pagar
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(c)}>
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
+                            {esAdmin && (
+                              <>
+                                <Button variant="ghost" size="icon" title="Editar" onClick={() => abrirEditar(c)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Anular" onClick={() => setConfirmDelete(c)}>
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </>
+                            )}
                           </>
                         )}
                       </div>
@@ -341,6 +387,45 @@ const handlePagar = async () => {
             <Button variant="outline" onClick={() => setGenerarModal(false)}>Cancelar</Button>
             <Button onClick={handleGenerar} disabled={generando}>
               {generando ? 'Generando...' : 'Generar cuotas'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal editar cuota */}
+      <Modal open={!!editModal} onClose={() => setEditModal(null)} title="Editar cuota">
+        <div className="space-y-4">
+          <div className="rounded-lg bg-muted p-3 text-sm">
+            <p className="font-medium">{editModal ? nombreSocio(editModal.socioId) : ''}</p>
+            <p className="text-muted-foreground">Período {editModal?.periodo}</p>
+          </div>
+          <Input
+            id="edit-monto"
+            label="Monto"
+            type="number"
+            value={editMonto}
+            onChange={e => setEditMonto(e.target.value)}
+          />
+          <Input
+            id="edit-fecha-venc"
+            label="Fecha de vencimiento"
+            type="date"
+            value={editFechaVenc}
+            onChange={e => setEditFechaVenc(e.target.value)}
+          />
+          <Select
+            id="edit-estado"
+            label="Estado"
+            value={editEstado}
+            onChange={e => setEditEstado(e.target.value)}
+          >
+            <option value="PENDIENTE">PENDIENTE</option>
+            <option value="VENCIDA">VENCIDA</option>
+          </Select>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setEditModal(null)}>Cancelar</Button>
+            <Button onClick={handleEditar} disabled={editando}>
+              {editando ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </div>
         </div>

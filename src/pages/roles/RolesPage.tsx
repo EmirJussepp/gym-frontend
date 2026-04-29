@@ -9,18 +9,27 @@ import { Modal } from '@/components/ui/Modal'
 import { Table, TableHead, TableBody, TableRow, TableTh, TableTd } from '@/components/ui/Table'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Pencil } from 'lucide-react'
 import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 
-interface RolForm { nombre: string; descripcion: string }
+const schema = z.object({
+  nombre:      z.string().min(2, 'Mínimo 2 caracteres'),
+  descripcion: z.string().optional(),
+})
+type RolForm = z.infer<typeof schema>
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<Rol[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editando, setEditando] = useState<Rol | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Rol | null>(null)
   const { toasts, toast, dismiss } = useToast()
-  const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<RolForm>()
+  const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<RolForm>({
+    resolver: zodResolver(schema),
+  })
 
   const fetchRoles = useCallback(async () => {
     setLoading(true)
@@ -36,15 +45,27 @@ export default function RolesPage() {
 
   useEffect(() => { fetchRoles() }, [fetchRoles])
 
+  const abrirEditar = (rol: Rol) => {
+    setEditando(rol)
+    reset({ nombre: rol.nombre, descripcion: rol.descripcion ?? '' })
+    setModalOpen(true)
+  }
+
   const onSubmit = async (data: RolForm) => {
     try {
-      await rolesService.create(data.nombre, data.descripcion)
-      toast('Rol creado', 'success')
+      if (editando) {
+        await rolesService.update(editando.roleId, data.nombre, data.descripcion)
+        toast('Rol actualizado', 'success')
+      } else {
+        await rolesService.create(data.nombre, data.descripcion)
+        toast('Rol creado', 'success')
+      }
       setModalOpen(false)
+      setEditando(null)
       reset()
       fetchRoles()
     } catch {
-      toast('Error al crear rol', 'error')
+      toast(editando ? 'Error al actualizar rol' : 'Error al crear rol', 'error')
     }
   }
 
@@ -67,7 +88,7 @@ export default function RolesPage() {
         title="Roles"
         subtitle={`${roles.length} roles cargados`}
         action={
-          <Button onClick={() => { reset(); setModalOpen(true) }}>
+          <Button onClick={() => { setEditando(null); reset({ nombre: '', descripcion: '' }); setModalOpen(true) }}>
             <Plus className="h-4 w-4" /> Nuevo rol
           </Button>
         }
@@ -90,7 +111,10 @@ export default function RolesPage() {
                 <TableTd className="font-medium">{r.nombre}</TableTd>
                 <TableTd className="text-muted-foreground">{r.descripcion ?? '—'}</TableTd>
                 <TableTd>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => abrirEditar(r)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(r)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
@@ -102,19 +126,19 @@ export default function RolesPage() {
         </Table>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo rol">
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setEditando(null) }} title={editando ? 'Editar rol' : 'Nuevo rol'}>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Input
             id="nombre"
             label="Nombre"
             placeholder="Ej: Admin, Recepcionista..."
             error={errors.nombre?.message}
-            {...register('nombre', { required: 'Requerido' })}
+            {...register('nombre')}
           />
           <Input id="descripcion" label="Descripción" {...register('descripcion')} />
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button type="submit" loading={isSubmitting}>Crear rol</Button>
+            <Button type="button" variant="outline" onClick={() => { setModalOpen(false); setEditando(null) }}>Cancelar</Button>
+            <Button type="submit" loading={isSubmitting}>{editando ? 'Guardar cambios' : 'Crear rol'}</Button>
           </div>
         </form>
       </Modal>

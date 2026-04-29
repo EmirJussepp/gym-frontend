@@ -26,6 +26,11 @@ export const usuariosService = {
     return res.data
   },
 
+  update: async (id: number, data: { nombre: string; email: string; roleId?: number; activo: boolean; password?: string }): Promise<Usuario> => {
+    const res = await api.put(`/auth/users/${id}`, data)
+    return res.data
+  },
+
   desactivar: async (id: number): Promise<void> => {
     await api.delete(`/auth/users/${id}`)
   },

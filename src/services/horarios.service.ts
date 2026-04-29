@@ -23,6 +23,11 @@ export const horariosService = {
     return res.data
   },
 
+  update: async (socioId: number, horarioId: number, diaSemana: number, horaInicio: string, tipoActividad: string): Promise<Horario> => {
+    const res = await api.put(`/socios/${socioId}/horarios/${horarioId}`, { diaSemana, horaInicio, tipoActividad })
+    return res.data
+  },
+
   delete: async (socioId: number, horarioId: number): Promise<void> => {
     await api.delete(`/socios/${socioId}/horarios/${horarioId}`)
   },

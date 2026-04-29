@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificacionesStore } from '@/store/notificacionesStore'
+import { useIsAdmin } from '@/hooks/useRole'
 import {
   LayoutDashboard, Users, CreditCard,
   Dumbbell, CalendarCheck, LogOut, ChevronRight,
@@ -25,9 +26,10 @@ const NAV_GESTION = [
 ]
 
 const NAV_CONFIG = [
-  { to: '/usuarios',     label: 'Usuarios',         icon: UserCog },
-  { to: '/roles',        label: 'Roles',             icon: Shield },
-  { to: '/metodos-pago', label: 'Métodos de pago',  icon: Wallet },
+  { to: '/usuarios',      label: 'Usuarios',         icon: UserCog },
+  { to: '/roles',         label: 'Roles',             icon: Shield },
+  { to: '/metodos-pago',  label: 'Métodos de pago',  icon: Wallet },
+  { to: '/configuracion', label: 'Configuración',     icon: Settings },
 ]
 
 function NavGroup({
@@ -78,14 +80,27 @@ function NavGroup({
 }
 
 export function Sidebar() {
-  const { usuario, logout }       = useAuthStore()
+  const { usuario, logout }        = useAuthStore()
   const { cuotasVencidas, cargar } = useNotificacionesStore()
+  const esAdmin                    = useIsAdmin()
+  const [gymNombre, setGymNombre]  = useState(
+    () => localStorage.getItem('gym_nombre') ?? 'AERO GYM'
+  )
 
   // Cargar notificaciones al montar y cada 5 minutos
   useEffect(() => {
     cargar()
     const intervalo = setInterval(cargar, 5 * 60 * 1000)
     return () => clearInterval(intervalo)
+  }, [])
+
+  // Sincronizar nombre del gimnasio si cambia en otra pestaña o desde ConfiguracionPage
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'gym_nombre' && e.newValue) setGymNombre(e.newValue)
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   return (
@@ -99,7 +114,7 @@ export function Sidebar() {
         />
         <div className="flex flex-col leading-tight">
           <span className="text-lg font-bold tracking-wide" style={{ color: '#E8922A' }}>
-            AERO GYM
+            {gymNombre}
           </span>
           <span className="text-[10px] text-muted-foreground tracking-widest uppercase">
             Since 2026
@@ -138,7 +153,7 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <NavGroup titulo="Principal" items={NAV_MAIN} badge={cuotasVencidas} />
         <NavGroup titulo="Gestión"   items={NAV_GESTION} />
-        <NavGroup titulo="Sistema"   items={NAV_CONFIG} />
+        {esAdmin && <NavGroup titulo="Sistema" items={NAV_CONFIG} />}
       </nav>
 
       {/* Footer usuario */}
@@ -149,7 +164,9 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{usuario?.nombre}</p>
-            <p className="text-xs text-muted-foreground truncate">{usuario?.email}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {usuario?.rolNombre ?? (esAdmin ? 'Admin' : 'Recepcionista')}
+            </p>
           </div>
           <button
             onClick={logout}

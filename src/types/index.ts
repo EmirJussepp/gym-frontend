@@ -5,6 +5,7 @@ export interface Usuario {
   email: string
   roleId: number | null
   activo: boolean
+  rolNombre?: string
 }
 
 export interface LoginResponse {

@@ -63,8 +63,11 @@ export default function SocioRutinaModal({ open, onClose, socioId, socioNombre }
       setAsignando(false)
       setRutinaSeleccionada('')
       fetchData()
-    } catch {
-      toast('Error al asignar rutina', 'error')
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+        ?? 'Error al asignar rutina'
+      toast(msg, 'error')
     } finally {
       setGuardando(false)
     }

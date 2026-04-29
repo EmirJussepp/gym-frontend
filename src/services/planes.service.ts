@@ -24,4 +24,13 @@ export const planesService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/planes/${id}`)
   },
+
+  getActividades: async (id: number): Promise<string[]> => {
+    const res = await api.get(`/planes/${id}/actividades`)
+    return res.data.actividades ?? []
+  },
+
+  setActividades: async (id: number, actividades: string[]): Promise<void> => {
+    await api.put(`/planes/${id}/actividades`, { actividades })
+  },
 }

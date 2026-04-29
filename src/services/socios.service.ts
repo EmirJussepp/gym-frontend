@@ -36,6 +36,21 @@ export const sociosService = {
     await api.delete(`/socios/${id}`)
   },
 
+  reactivar: async (socio: Socio): Promise<void> => {
+    await api.put(`/socios/${socio.socioId}`, {
+      nombre:              socio.nombre,
+      apellido:            socio.apellido,
+      dni:                 socio.dni,
+      telefono:            socio.telefono,
+      email:               socio.email,
+      fechaNacimiento:     socio.fechaNacimiento,
+      planId:              socio.planId,
+      estado:              'ACTIVO',
+      fechaInicio:         socio.fechaInicio,
+      precioPersonalizado: socio.precioPersonalizado,
+    })
+  },
+
   getHistorial: async (id: number) => {
     const res = await api.get(`/socios/${id}/historial`)
     return res.data

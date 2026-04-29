@@ -16,8 +16,9 @@ import { usePagination } from '@/hooks/usePagination'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import SocioForm from './SocioForm'
 import SocioRutinaModal from './SocioRutinaModal'
-import { Plus, Pencil, Trash2, ListChecks, User, FileDown, Search, X, SlidersHorizontal } from 'lucide-react'
+import { Plus, Pencil, Trash2, ListChecks, User, FileDown, Search, X, SlidersHorizontal, RotateCcw } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { useIsAdmin } from '@/hooks/useRole'
 
 const ESTADO_VARIANT: Record<string, 'success' | 'danger' | 'warning'> = {
   ACTIVO: 'success',
@@ -29,6 +30,7 @@ const ESTADOS = ['ACTIVO', 'INACTIVO', 'SUSPENDIDO']
 
 export default function SociosPage() {
   const navigate = useNavigate()
+  const esAdmin  = useIsAdmin()
   const [socios, setSocios]               = useState<Socio[]>([])
   const [planes, setPlanes]               = useState<Plan[]>([])
   const [totalPaginas, setTotalPaginas]   = useState(1)
@@ -103,6 +105,16 @@ export default function SociosPage() {
       fetchSocios()
     } catch {
       toast('Error al eliminar socio', 'error')
+    }
+  }
+
+  const handleReactivar = async (s: Socio) => {
+    try {
+      await sociosService.reactivar(s)
+      toast(`${s.nombre} ${s.apellido} reactivado`, 'success')
+      fetchSocios()
+    } catch {
+      toast('Error al reactivar socio', 'error')
     }
   }
 
@@ -284,9 +296,17 @@ export default function SociosPage() {
                           <Button variant="ghost" size="icon" title="Editar" onClick={() => { setEditando(s); setModalOpen(true) }}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Desactivar" onClick={() => setConfirmDelete(s)}>
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
+                          {esAdmin && (
+                            s.estado === 'ACTIVO' ? (
+                              <Button variant="ghost" size="icon" title="Desactivar" onClick={() => setConfirmDelete(s)}>
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="icon" title="Reactivar" onClick={() => handleReactivar(s)}>
+                                <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
+                              </Button>
+                            )
+                          )}
                         </div>
                       </TableTd>
                     </TableRow>

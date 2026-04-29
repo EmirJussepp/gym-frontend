@@ -54,6 +54,8 @@ export default function ConfiguracionPage() {
     localStorage.setItem('gym_email',     data.email ?? '')
     localStorage.setItem('gym_instagram', data.instagram ?? '')
     localStorage.setItem('gym_color',     colorSeleccionado)
+    // Notificar al Sidebar en la misma pestaña
+    window.dispatchEvent(new StorageEvent('storage', { key: 'gym_nombre', newValue: data.nombreGimnasio }))
     document.documentElement.style.setProperty('--primary', colorSeleccionado)
     toast('Configuración guardada correctamente', 'success')
   }

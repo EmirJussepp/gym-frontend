@@ -23,10 +23,11 @@ import { formatDate, formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, User, Phone, Mail, Calendar, CreditCard,
   Dumbbell, CheckCircle, Clock, AlertCircle, Activity,
-  ChevronRight, StickyNote, Trash2, Send, History,
+  ChevronRight, StickyNote, Trash2, Send, History, ListChecks,
 } from 'lucide-react'
 import SocioRutinaModal from './SocioRutinaModal'
 import SocioForm from './SocioForm'
+import RutinaEjerciciosModal from '../rutinas/RutinaEjerciciosModal'
 
 interface SocioNota {
   notaId: number
@@ -68,8 +69,9 @@ export default function SocioPerfilPage() {
   const [notas, setNotas]                     = useState<SocioNota[]>([])
   const [historialPlanes, setHistorialPlanes] = useState<HistorialPlan[]>([])
   const [loading, setLoading]                 = useState(true)
-  const [rutinaModal, setRutinaModal]         = useState(false)
-  const [editarModal, setEditarModal]         = useState(false)
+  const [rutinaModal, setRutinaModal]               = useState(false)
+  const [editarModal, setEditarModal]               = useState(false)
+  const [editarEjerciciosModal, setEditarEjerciciosModal] = useState(false)
   const [notaTexto, setNotaTexto]             = useState('')
   const [guardandoNota, setGuardandoNota]     = useState(false)
   const notaInputRef = useRef<HTMLTextAreaElement>(null)
@@ -140,39 +142,66 @@ export default function SocioPerfilPage() {
     return lineas.join('\n')
   }
 
-  function compartirWhatsApp() {
-    if (!rutinaActiva || !socio) return
-    const baseUrl = import.meta.env.VITE_API_URL
-    if (!baseUrl) { alert('Falta configurar VITE_API_URL'); return }
-    const urlPdf = `${baseUrl}/socios/${socioId}/rutina/pdf`
-    const texto = `Rutina: ${rutinaActiva.rutinaNombre}\n\nAlumno: ${socio.nombre} ${socio.apellido}\n\nVer rutina:\n${urlPdf}\n`
-    const tel = socio.telefono?.replace(/\D/g, '')
-    window.open(tel ? `https://wa.me/${tel}?text=${encodeURIComponent(texto)}` : `https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank')
-  }
-
-  function compartirGmail() {
-    if (!rutinaActiva || !socio) return
-    const texto = buildRutinaText(`${socio.nombre} ${socio.apellido}`, rutinaActiva.rutinaNombre, ejercicios)
-    const asunto = encodeURIComponent(`Tu rutina: ${rutinaActiva.rutinaNombre}`)
-    const cuerpo = encodeURIComponent(texto)
-    window.open(`mailto:${socio.email ?? ''}?subject=${asunto}&body=${cuerpo}`, '_blank')
-  }
-
-  async function descargarPDF() {
+  async function downloadPdfBlob(): Promise<boolean> {
     try {
       const blob = await rutinasService.descargarPdf(socioId)
-      if (!blob || blob.size === 0) throw new Error('PDF vacio')
+      if (!blob || blob.size === 0) return false
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `rutina-${socio?.apellido}.pdf`
+      a.download = `rutina-${socio?.apellido ?? socioId}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
       setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+      return true
     } catch {
-      toast('No se pudo descargar el PDF', 'error')
+      return false
     }
+  }
+
+  async function compartirWhatsApp() {
+    if (!rutinaActiva || !socio) return
+    const texto = buildRutinaText(`${socio.nombre} ${socio.apellido}`, rutinaActiva.rutinaNombre, ejercicios)
+    const tel = socio.telefono?.replace(/\D/g, '')
+
+    // Descargar PDF primero
+    const ok = await downloadPdfBlob()
+    if (ok) {
+      toast('PDF descargado — adjuntalo en el chat de WhatsApp 📎', 'success')
+    }
+
+    window.open(
+      tel
+        ? `https://wa.me/${tel}?text=${encodeURIComponent(texto)}`
+        : `https://wa.me/?text=${encodeURIComponent(texto)}`,
+      '_blank'
+    )
+  }
+
+  async function compartirGmail() {
+    if (!rutinaActiva || !socio) return
+    const texto = buildRutinaText(`${socio.nombre} ${socio.apellido}`, rutinaActiva.rutinaNombre, ejercicios)
+    const asunto = encodeURIComponent(`Tu rutina: ${rutinaActiva.rutinaNombre}`)
+    const cuerpo = encodeURIComponent(texto)
+
+    // Descargar PDF primero
+    const ok = await downloadPdfBlob()
+    if (ok) {
+      toast('PDF descargado — adjuntalo en el correo 📎', 'success')
+    }
+
+    // Abre Gmail Web compose (funciona sin cliente de correo local)
+    const to = encodeURIComponent(socio.email ?? '')
+    window.open(
+      `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${asunto}&body=${cuerpo}`,
+      '_blank'
+    )
+  }
+
+  async function descargarPDF() {
+    const ok = await downloadPdfBlob()
+    if (!ok) toast('No se pudo descargar el PDF', 'error')
   }
 
   const agregarNota = async () => {
@@ -409,11 +438,18 @@ export default function SocioPerfilPage() {
             <CardContent className="pt-5 pb-5">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rutina activa</p>
-                <Button variant="outline" size="sm" onClick={() => setRutinaModal(true)}>
-                  <Dumbbell className="h-3.5 w-3.5" />
-                  {rutinaActiva ? 'Cambiar rutina' : 'Asignar rutina'}
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex gap-2">
+                  {rutinaActiva && (
+                    <Button variant="outline" size="sm" onClick={() => setEditarEjerciciosModal(true)}>
+                      <ListChecks className="h-3.5 w-3.5" /> Editar ejercicios
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setRutinaModal(true)}>
+                    <Dumbbell className="h-3.5 w-3.5" />
+                    {rutinaActiva ? 'Cambiar rutina' : 'Asignar rutina'}
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
 
               {rutinaActiva ? (
@@ -463,17 +499,29 @@ export default function SocioPerfilPage() {
           </Card>
 
           {rutinaActiva && ejercicios.length > 0 && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={compartirWhatsApp}>
-                <Phone className="h-3.5 w-3.5" /> WhatsApp
-              </Button>
-              <Button variant="outline" size="sm" onClick={compartirGmail}>
-                <Mail className="h-3.5 w-3.5" /> Gmail
-              </Button>
-              <Button variant="outline" size="sm" onClick={descargarPDF}>
-                Descargar PDF
-              </Button>
-            </div>
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Enviar rutina al socio
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={compartirWhatsApp}>
+                    <Phone className="h-3.5 w-3.5 text-emerald-600" />
+                    Enviar por WhatsApp
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={compartirGmail}>
+                    <Mail className="h-3.5 w-3.5 text-blue-500" />
+                    Enviar por Gmail
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={descargarPDF}>
+                    Descargar PDF
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  El PDF se descarga automáticamente para que puedas adjuntarlo al mensaje.
+                </p>
+              </CardContent>
+            </Card>
           )}
 
           <Card>
@@ -517,6 +565,15 @@ export default function SocioPerfilPage() {
         socioId={socioId}
         socioNombre={`${socio.nombre} ${socio.apellido}`}
       />
+
+      {rutinaActiva && (
+        <RutinaEjerciciosModal
+          open={editarEjerciciosModal}
+          onClose={() => { setEditarEjerciciosModal(false); refrescarRutina() }}
+          rutinaId={rutinaActiva.rutinaId}
+          rutinaNombre={rutinaActiva.rutinaNombre}
+        />
+      )}
 
       <Modal open={editarModal} onClose={() => setEditarModal(false)} title="Editar socio" className="max-w-2xl">
         <SocioForm

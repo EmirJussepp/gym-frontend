@@ -12,7 +12,8 @@ import { Modal } from '@/components/ui/Modal'
 import { Table, TableHead, TableBody, TableRow, TableTh, TableTd } from '@/components/ui/Table'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
-import { Plus, Trash2, Search, Clock } from 'lucide-react'
+import { useDebounce } from '@/hooks/useDebounce'
+import { Plus, Trash2, Search, Clock, Pencil } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 
 interface HorarioForm {
@@ -21,36 +22,42 @@ interface HorarioForm {
   tipoActividad: string
 }
 
-const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
-const ACTIVIDADES = ['LIBRE','PILATES','FUNCIONAL','MUSCULACION']
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const ACTIVIDADES = ['LIBRE', 'PILATES', 'FUNCIONAL', 'MUSCULACION']
 
 export default function HorariosPage() {
-  const [horarios, setHorarios]               = useState<Horario[]>([])
-  const [socios, setSocios]                   = useState<Socio[]>([])
+  const [horarios, setHorarios]                   = useState<Horario[]>([])
   const [socioSeleccionado, setSocioSeleccionado] = useState<Socio | null>(null)
-  const [busqueda, setBusqueda]               = useState('')
-  const [sociosFiltrados, setSociosFiltrados] = useState<Socio[]>([])
-  const [loading, setLoading]                 = useState(false)
-  const [modalOpen, setModalOpen]             = useState(false)
-  const [confirmDelete, setConfirmDelete]     = useState<Horario | null>(null)
-  const { toasts, toast, dismiss }            = useToast()
+  const [busqueda, setBusqueda]                   = useState('')
+  const [sociosFiltrados, setSociosFiltrados]     = useState<Socio[]>([])
+  const [buscando, setBuscando]                   = useState(false)
+  const [loading, setLoading]                     = useState(false)
+  const [modalOpen, setModalOpen]                 = useState(false)
+  const [editando, setEditando]                   = useState<Horario | null>(null)
+  const [confirmDelete, setConfirmDelete]         = useState<Horario | null>(null)
+  const { toasts, toast, dismiss }                = useToast()
+
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<HorarioForm>({
     defaultValues: { diaSemana: 1, tipoActividad: 'LIBRE' }
   })
 
-  useEffect(() => {
-    sociosService.getAll(1, 200).then(r => setSocios(r.data)).catch(() => {})
-  }, [])
+  const busquedaDebounced = useDebounce(busqueda, 300)
 
+  // Búsqueda server-side — se dispara solo cuando el debounced value cambia
   useEffect(() => {
-    if (!busqueda.trim()) { setSociosFiltrados([]); return }
-    const q = busqueda.toLowerCase()
-    setSociosFiltrados(
-      socios.filter(s =>
-        `${s.nombre} ${s.apellido}`.toLowerCase().includes(q) || s.dni.includes(q)
-      ).slice(0, 6)
-    )
-  }, [busqueda, socios])
+    if (!busquedaDebounced.trim()) { setSociosFiltrados([]); return }
+    if (socioSeleccionado) return   // ya hay uno seleccionado, no buscar
+    setBuscando(true)
+    sociosService.getAll(1, 6, { busqueda: busquedaDebounced.trim() })
+      .then(res => setSociosFiltrados(res.data))
+      .catch(() => setSociosFiltrados([]))
+      .finally(() => setBuscando(false))
+  }, [busquedaDebounced])
+
+  const handleBusquedaChange = (valor: string) => {
+    setBusqueda(valor)
+    if (!valor) { setSocioSeleccionado(null); setHorarios([]); setSociosFiltrados([]) }
+  }
 
   const fetchHorarios = useCallback(async (socio: Socio) => {
     setLoading(true)
@@ -71,21 +78,43 @@ export default function HorariosPage() {
     fetchHorarios(socio)
   }
 
+  const abrirEditar = (h: Horario) => {
+    setEditando(h)
+    reset({ diaSemana: h.diaSemana, horaInicio: h.horaInicio, tipoActividad: h.tipoActividad })
+    setModalOpen(true)
+  }
+
+  const cerrarModal = () => {
+    setModalOpen(false)
+    setEditando(null)
+    reset({ diaSemana: 1, tipoActividad: 'LIBRE' })
+  }
+
   const onSubmit = async (data: HorarioForm) => {
     if (!socioSeleccionado) return
     try {
-      await horariosService.create(
-        socioSeleccionado.socioId,
-        Number(data.diaSemana),
-        data.horaInicio,
-        data.tipoActividad
-      )
-      toast('Horario creado', 'success')
-      setModalOpen(false)
-      reset()
+      if (editando) {
+        await horariosService.update(
+          socioSeleccionado.socioId,
+          editando.horarioId,
+          Number(data.diaSemana),
+          data.horaInicio,
+          data.tipoActividad
+        )
+        toast('Horario actualizado', 'success')
+      } else {
+        await horariosService.create(
+          socioSeleccionado.socioId,
+          Number(data.diaSemana),
+          data.horaInicio,
+          data.tipoActividad
+        )
+        toast('Horario creado', 'success')
+      }
+      cerrarModal()
       fetchHorarios(socioSeleccionado)
     } catch {
-      toast('Error al crear horario', 'error')
+      toast(editando ? 'Error al actualizar horario' : 'Error al crear horario', 'error')
     }
   }
 
@@ -105,19 +134,21 @@ export default function HorariosPage() {
     <div>
       <PageHeader
         title="Horarios"
-        subtitle={socioSeleccionado
-          ? `${socioSeleccionado.nombre} ${socioSeleccionado.apellido} — ${horarios.length} horario${horarios.length !== 1 ? 's' : ''}`
-          : 'Horarios habituales por socio'}
+        subtitle={
+          socioSeleccionado
+            ? `${socioSeleccionado.nombre} ${socioSeleccionado.apellido} — ${horarios.length} horario${horarios.length !== 1 ? 's' : ''}`
+            : 'Horarios habituales por socio'
+        }
         action={
           socioSeleccionado && (
-            <Button onClick={() => { reset(); setModalOpen(true) }}>
+            <Button onClick={() => { reset({ diaSemana: 1, tipoActividad: 'LIBRE' }); setEditando(null); setModalOpen(true) }}>
               <Plus className="h-4 w-4" /> Agregar horario
             </Button>
           )
         }
       />
 
-      {/* Búsqueda */}
+      {/* Búsqueda server-side */}
       <div className="relative mb-6 max-w-sm">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -126,11 +157,13 @@ export default function HorariosPage() {
             className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             placeholder="Buscar socio por nombre o DNI..."
             value={busqueda}
-            onChange={e => {
-              setBusqueda(e.target.value)
-              if (!e.target.value) { setSocioSeleccionado(null); setHorarios([]) }
-            }}
+            onChange={e => handleBusquedaChange(e.target.value)}
           />
+          {buscando && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          )}
         </div>
         {sociosFiltrados.length > 0 && (
           <div className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-card shadow-lg">
@@ -161,7 +194,7 @@ export default function HorariosPage() {
         <div className="text-center py-12 text-muted-foreground">
           <Clock className="h-10 w-10 mx-auto mb-3 opacity-20" />
           <p>Sin horarios registrados</p>
-          <Button variant="outline" className="mt-3" onClick={() => { reset(); setModalOpen(true) }}>
+          <Button variant="outline" className="mt-3" onClick={() => { reset({ diaSemana: 1, tipoActividad: 'LIBRE' }); setEditando(null); setModalOpen(true) }}>
             <Plus className="h-4 w-4" /> Agregar primer horario
           </Button>
         </div>
@@ -176,7 +209,7 @@ export default function HorariosPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {[...horarios].sort((a, b) => a.diaSemana - b.diaSemana).map(h => (
+            {[...horarios].sort((a, b) => a.diaSemana - b.diaSemana || a.horaInicio.localeCompare(b.horaInicio)).map(h => (
               <TableRow key={h.horarioId}>
                 <TableTd className="font-medium">{getDiaNombre(h.diaSemana)}</TableTd>
                 <TableTd>{h.horaInicio}</TableTd>
@@ -184,8 +217,11 @@ export default function HorariosPage() {
                   <Badge variant="secondary">{h.tipoActividad}</Badge>
                 </TableTd>
                 <TableTd>
-                  <div className="flex justify-end">
-                    <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(h)}>
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" title="Editar" onClick={() => abrirEditar(h)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Eliminar" onClick={() => setConfirmDelete(h)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>
@@ -196,7 +232,8 @@ export default function HorariosPage() {
         </Table>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Agregar horario">
+      {/* Modal crear / editar */}
+      <Modal open={modalOpen} onClose={cerrarModal} title={editando ? 'Editar horario' : 'Agregar horario'}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Select id="diaSemana" label="Día de la semana" {...register('diaSemana')}>
             {DIAS.map((d, i) => <option key={i + 1} value={i + 1}>{d}</option>)}
@@ -211,14 +248,15 @@ export default function HorariosPage() {
             {ACTIVIDADES.map(a => <option key={a} value={a}>{a}</option>)}
           </Select>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={cerrarModal}>Cancelar</Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : 'Agregar'}
+              {isSubmitting ? 'Guardando...' : editando ? 'Guardar cambios' : 'Agregar'}
             </Button>
           </div>
         </form>
       </Modal>
 
+      {/* Modal confirmar eliminar */}
       <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Eliminar horario">
         <p className="text-sm text-muted-foreground mb-6">
           ¿Eliminar el horario del <strong>{confirmDelete ? getDiaNombre(confirmDelete.diaSemana) : ''}</strong> a las{' '}
