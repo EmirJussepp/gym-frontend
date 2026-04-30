@@ -94,10 +94,12 @@ export interface EjercicioRequest {
   activo?: boolean
 }
 
-export interface WgerOpcion {
+export interface ExerciseDBOpcion {
   nombre: string
-  imagenUrl: string
-  wgerBaseId: number
+  gifUrl: string
+  bodyPart: string
+  target: string
+  exerciseId: string
 }
 
 // ─── Grupos Musculares ───────────────────────────────────────────────────────

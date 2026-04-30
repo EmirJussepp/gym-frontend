@@ -1,53 +1,48 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ejerciciosService } from '@/services/ejercicios.service'
-import type { Ejercicio, GrupoMuscular, WgerOpcion } from '@/types'
+import { getImagenUrl } from '@/lib/utils'
+import type { Ejercicio, GrupoMuscular } from '@/types'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
-import { Search, X, ImageOff } from 'lucide-react'
+import { ImageOff, Upload, X } from 'lucide-react'
 
 const schema = z.object({
-  nombre: z.string().min(1, 'Requerido'),
-  grupoMuscularId: z
-    .number({ required_error: 'Seleccioná un grupo muscular' })
-    .min(1, 'Seleccioná un grupo muscular'),
-  descripcion: z.string().optional(),
-  imagenUrl: z.string().optional(),
-  activo: z.coerce.boolean().optional(),
+  nombre:          z.string().min(1, 'Requerido'),
+  grupoMuscularId: z.number({ required_error: 'Seleccioná un grupo muscular' }).min(1),
+  descripcion:     z.string().optional(),
+  imagenUrl:       z.string().optional(),
+  activo:          z.coerce.boolean().optional(),
 })
 
 type FormData = z.infer<typeof schema>
 
 interface Props {
-  grupos: GrupoMuscular[]
+  grupos:    GrupoMuscular[]
   ejercicio: Ejercicio | null
-  onSaved: () => void
-  onCancel: () => void
+  onSaved:   () => void
+  onCancel:  () => void
 }
 
 export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: Props) {
-  const [wgerOpciones, setWgerOpciones]   = useState<WgerOpcion[]>([])
-  const [buscandoWger, setBuscandoWger]   = useState(false)
-  const [wgerError, setWgerError]         = useState<string | null>(null)
+  const [subiendo, setSubiendo]       = useState(false)
+  const [errorImg, setErrorImg]       = useState<string | null>(null)
+  // Preview local (antes de subir) o URL ya guardada
+  const [preview, setPreview]         = useState<string | null>(null)
+  const inputFileRef                  = useRef<HTMLInputElement>(null)
 
   const {
-    control,
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    setValue,
-    formState: { errors, isSubmitting }
+    control, register, handleSubmit, reset, watch, setValue,
+    formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { activo: true, imagenUrl: '' },
   })
 
-  const nombreActual = watch('nombre')
-  const imagenSeleccionada = watch('imagenUrl')
+  const imagenGuardada = watch('imagenUrl')
 
   useEffect(() => {
     if (ejercicio) {
@@ -58,31 +53,50 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
         imagenUrl:       ejercicio.imagenUrl ?? '',
         activo:          ejercicio.activo,
       })
+      setPreview(ejercicio.imagenUrl ? getImagenUrl(ejercicio.imagenUrl) ?? null : null)
     } else {
-      reset({ activo: true })
+      reset({ activo: true, imagenUrl: '' })
+      setPreview(null)
     }
-    setWgerOpciones([])
-    setWgerError(null)
+    setErrorImg(null)
   }, [ejercicio, reset])
 
-  const buscarEnWger = async () => {
-    const termino = nombreActual?.trim()
-    if (!termino) return
-    setBuscandoWger(true)
-    setWgerError(null)
-    setWgerOpciones([])
-    try {
-      const opciones = await ejerciciosService.buscarWger(termino)
-      if (opciones.length === 0) {
-        setWgerError('No se encontraron imágenes en wger para ese nombre. Probá en inglés.')
-      } else {
-        setWgerOpciones(opciones)
-      }
-    } catch {
-      setWgerError('Error al conectar con wger. Verificá tu conexión.')
-    } finally {
-      setBuscandoWger(false)
+  const handleArchivoSeleccionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validar tipo
+    if (!file.type.startsWith('image/')) {
+      setErrorImg('El archivo debe ser una imagen (JPG, PNG, WEBP…)')
+      return
     }
+    // Validar tamaño (máx 5 MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorImg('La imagen no puede superar los 5 MB')
+      return
+    }
+
+    // Mostrar preview local inmediato
+    setPreview(URL.createObjectURL(file))
+    setErrorImg(null)
+    setSubiendo(true)
+
+    try {
+      const url = await ejerciciosService.uploadImagen(file)
+      setValue('imagenUrl', url, { shouldValidate: true })
+    } catch {
+      setErrorImg('Error al subir la imagen. Intentá de nuevo.')
+      setPreview(imagenGuardada ? getImagenUrl(imagenGuardada) ?? null : null)
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
+  const quitarImagen = () => {
+    setValue('imagenUrl', '', { shouldValidate: true })
+    setPreview(null)
+    setErrorImg(null)
+    if (inputFileRef.current) inputFileRef.current.value = ''
   }
 
   const onSubmit = async (data: FormData) => {
@@ -97,7 +111,7 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-      {/* Campo oculto necesario para que react-hook-form incluya imagenUrl en el submit */}
+      {/* Campo oculto — necesario para react-hook-form */}
       <input type="hidden" {...register('imagenUrl')} />
 
       {/* Nombre */}
@@ -118,15 +132,10 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
             label="Grupo muscular"
             error={errors.grupoMuscularId?.message as string}
             value={field.value ?? ''}
-            onChange={(e) => {
-              const value = e.target.value
-              field.onChange(value ? Number(value) : undefined)
-            }}
+            onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
           >
             <option value="">Seleccionar...</option>
-            {grupos.map((g) => (
-              <option key={g.id} value={g.id}>{g.nombre}</option>
-            ))}
+            {grupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
           </Select>
         )}
       />
@@ -140,77 +149,85 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
         />
       </div>
 
-      {/* Imagen wger */}
+      {/* ── Imagen ── */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium">Imagen ilustrativa</label>
+        <label className="text-sm font-medium">Foto del ejercicio</label>
+
+        {/* Vista previa + quitar */}
+        {preview ? (
+          <div className="relative w-full rounded-xl overflow-hidden border border-input bg-muted/30">
+            <img
+              src={preview}
+              alt="Vista previa"
+              className="w-full max-h-52 object-contain py-3"
+              onError={() => setPreview(null)}
+            />
+            {subiendo && (
+              <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+                <span className="text-sm text-muted-foreground animate-pulse">Subiendo…</span>
+              </div>
+            )}
+            {!subiendo && (
+              <button
+                type="button"
+                onClick={quitarImagen}
+                className="absolute top-2 right-2 rounded-full bg-background/80 p-1 hover:bg-destructive hover:text-white transition-colors"
+                title="Quitar imagen"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        ) : (
+          /* Zona de upload */
+          <label
+            htmlFor="img-upload"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-card p-8 cursor-pointer hover:border-primary/60 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <Upload className="h-5 w-5 text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium">Hacé clic o arrastrá una imagen</p>
+              <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, WEBP — máx. 5 MB</p>
+            </div>
+          </label>
+        )}
+
+        <input
+          ref={inputFileRef}
+          id="img-upload"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleArchivoSeleccionado}
+          disabled={subiendo}
+        />
+
+        {/* Botón alternativo si ya hay imagen (cambiar) */}
+        {preview && !subiendo && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={buscarEnWger}
-            disabled={buscandoWger || !nombreActual?.trim()}
+            onClick={() => inputFileRef.current?.click()}
           >
-            <Search className="h-3.5 w-3.5" />
-            {buscandoWger ? 'Buscando...' : 'Buscar en wger'}
+            <Upload className="h-3.5 w-3.5" /> Cambiar imagen
           </Button>
-        </div>
-
-        {/* Vista previa de imagen seleccionada */}
-        {imagenSeleccionada && (
-          <div className="flex items-center gap-3 rounded-lg border border-input bg-muted/40 p-2">
-            <img
-              src={imagenSeleccionada}
-              alt="Imagen seleccionada"
-              className="h-16 w-16 object-contain rounded"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground truncate">{imagenSeleccionada}</p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => { setValue('imagenUrl', ''); setWgerOpciones([]) }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
         )}
 
-        {/* Error wger */}
-        {wgerError && (
-          <p className="text-xs text-amber-600 flex items-center gap-1">
-            <ImageOff className="h-3.5 w-3.5" /> {wgerError}
+        {/* Error */}
+        {errorImg && (
+          <p className="text-xs text-destructive flex items-center gap-1.5">
+            <ImageOff className="h-3.5 w-3.5 shrink-0" /> {errorImg}
           </p>
         )}
 
-        {/* Opciones de wger */}
-        {wgerOpciones.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
-            {wgerOpciones.map((op) => (
-              <button
-                key={op.wgerBaseId}
-                type="button"
-                onClick={() => {
-                  setValue('imagenUrl', op.imagenUrl)
-                  setWgerOpciones([])
-                }}
-                className={`rounded-lg border-2 p-1.5 flex flex-col items-center gap-1 transition-colors hover:border-primary ${
-                  imagenSeleccionada === op.imagenUrl ? 'border-primary bg-primary/5' : 'border-input'
-                }`}
-              >
-                <img
-                  src={op.imagenUrl}
-                  alt={op.nombre}
-                  className="h-14 w-14 object-contain"
-                  onError={(e) => { (e.target as HTMLImageElement).src = '' }}
-                />
-                <span className="text-xs text-center text-muted-foreground leading-tight line-clamp-2">{op.nombre}</span>
-              </button>
-            ))}
-          </div>
+        {/* Info PDF */}
+        {preview && !errorImg && (
+          <p className="text-xs text-muted-foreground">
+            Esta imagen aparecerá en el PDF de la rutina del socio.
+          </p>
         )}
       </div>
 
@@ -223,7 +240,7 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
             id="activo"
             label="Estado"
             value={String(field.value)}
-            onChange={(e) => field.onChange(e.target.value === 'true')}
+            onChange={e => field.onChange(e.target.value === 'true')}
           >
             <option value="true">Activo</option>
             <option value="false">Inactivo</option>
@@ -233,10 +250,8 @@ export default function EjercicioForm({ grupos, ejercicio, onSaved, onCancel }: 
 
       {/* Acciones */}
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" loading={isSubmitting}>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+        <Button type="submit" loading={isSubmitting || subiendo}>
           {ejercicio ? 'Guardar cambios' : 'Crear ejercicio'}
         </Button>
       </div>

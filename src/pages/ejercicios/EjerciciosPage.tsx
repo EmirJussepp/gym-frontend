@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/useToast'
 import { usePagination } from '@/hooks/usePagination'
 import EjercicioForm from './EjercicioForm'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { getImagenUrl } from '@/lib/utils'
 
 export default function EjerciciosPage() {
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([])
@@ -93,9 +94,14 @@ export default function EjerciciosPage() {
                 <TableRow key={e.ejercicioId}>
                   <TableTd>
                     {e.imagenUrl ? (
-                      <img src={e.imagenUrl} alt={e.nombre} className="h-9 w-9 object-contain rounded" />
+                      <img
+                        src={getImagenUrl(e.imagenUrl)}
+                        alt={e.nombre}
+                        className="h-10 w-10 object-cover rounded-lg bg-muted"
+                        onError={ev => { (ev.target as HTMLImageElement).style.display = 'none' }}
+                      />
                     ) : (
-                      <div className="h-9 w-9 rounded bg-muted flex items-center justify-center text-muted-foreground text-xs">—</div>
+                      <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">—</div>
                     )}
                   </TableTd>
                   <TableTd className="font-medium">{e.nombre}</TableTd>

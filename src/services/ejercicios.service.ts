@@ -1,5 +1,5 @@
 import api from '@/lib/axios'
-import type { Ejercicio, EjercicioRequest, GrupoMuscular, PaginadoResponse, WgerOpcion } from '@/types'
+import type { Ejercicio, EjercicioRequest, GrupoMuscular, PaginadoResponse } from '@/types'
 
 export const ejerciciosService = {
   getAll: async (pagina = 1, porPagina = 50): Promise<PaginadoResponse<Ejercicio>> => {
@@ -30,8 +30,13 @@ export const ejerciciosService = {
     return res.data
   },
 
-  buscarWger: async (nombre: string): Promise<WgerOpcion[]> => {
-    const res = await api.get(`/wger/buscar?nombre=${encodeURIComponent(nombre)}`)
-    return res.data
+  /** Sube una imagen al servidor y devuelve la ruta relativa guardada */
+  uploadImagen: async (file: File): Promise<string> => {
+    const form = new FormData()
+    form.append('imagen', file)
+    const res = await api.post('/ejercicios/upload-imagen', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data.url as string   // ej: "/uploads/ejercicios/uuid.jpg"
   },
 }
