@@ -564,6 +564,8 @@ export default function SocioPerfilPage() {
         onClose={() => { setRutinaModal(false); refrescarRutina() }}
         socioId={socioId}
         socioNombre={`${socio.nombre} ${socio.apellido}`}
+        socioEmail={socio.email}
+        socioTelefono={socio.telefono}
       />
 
       {rutinaActiva && (

@@ -12,24 +12,41 @@ import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
 import { useAuthStore } from '@/store/authStore'
 import { formatDate } from '@/lib/utils'
-import { CheckCircle, Clock, Plus } from 'lucide-react'
+import { CheckCircle, Clock, Plus, Mail, MessageCircle, X } from 'lucide-react'
 
 interface Props {
   open: boolean
   onClose: () => void
   socioId: number
   socioNombre: string
+  socioEmail?: string
+  socioTelefono?: string
 }
 
-export default function SocioRutinaModal({ open, onClose, socioId, socioNombre }: Props) {
-  const [rutinaActiva, setRutinaActiva] = useState<RutinaSocioResponse | null>(null)
-  const [historial, setHistorial] = useState<RutinaSocioResponse[]>([])
-  const [rutinas, setRutinas] = useState<Rutina[]>([])
+function formatearWhatsApp(telefono: string): string {
+  // Elimina espacios, guiones, paréntesis
+  let num = telefono.replace(/[\s\-().+]/g, '')
+  // Si empieza con 0, se lo saca (Argentina: 0299 → 299)
+  if (num.startsWith('0')) num = num.slice(1)
+  // Si no empieza con 54, agrega el código de Argentina
+  if (!num.startsWith('54')) num = '54' + num
+  return num
+}
+
+export default function SocioRutinaModal({
+  open, onClose, socioId, socioNombre, socioEmail, socioTelefono,
+}: Props) {
+  const [rutinaActiva, setRutinaActiva]         = useState<RutinaSocioResponse | null>(null)
+  const [historial, setHistorial]               = useState<RutinaSocioResponse[]>([])
+  const [rutinas, setRutinas]                   = useState<Rutina[]>([])
   const [rutinaSeleccionada, setRutinaSeleccionada] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [asignando, setAsignando] = useState(false)
-  const [guardando, setGuardando] = useState(false)
-  const { toasts, toast, dismiss } = useToast()
+  const [loading, setLoading]                   = useState(true)
+  const [asignando, setAsignando]               = useState(false)
+  const [guardando, setGuardando]               = useState(false)
+  const [enviandoEmail, setEnviandoEmail]       = useState(false)
+  const [panelEnvio, setPanelEnvio]             = useState(false)
+  const [rutinaRecienAsignada, setRutinaRecienAsignada] = useState<string | null>(null)
+  const { toasts, toast, dismiss }              = useToast()
   const usuario = useAuthStore(s => s.usuario)
 
   const fetchData = useCallback(async () => {
@@ -51,7 +68,11 @@ export default function SocioRutinaModal({ open, onClose, socioId, socioNombre }
   }, [socioId])
 
   useEffect(() => {
-    if (open) fetchData()
+    if (open) {
+      fetchData()
+      setPanelEnvio(false)
+      setRutinaRecienAsignada(null)
+    }
   }, [open, fetchData])
 
   const handleAsignar = async () => {
@@ -59,14 +80,15 @@ export default function SocioRutinaModal({ open, onClose, socioId, socioNombre }
     setGuardando(true)
     try {
       await rutinaSocioService.asignar(socioId, Number(rutinaSeleccionada), usuario?.userId)
-      toast('Rutina asignada correctamente', 'success')
+      const nombreRutina = rutinas.find(r => r.rutinaId === Number(rutinaSeleccionada))?.nombre ?? ''
+      setRutinaRecienAsignada(nombreRutina)
+      setPanelEnvio(true)
       setAsignando(false)
       setRutinaSeleccionada('')
       fetchData()
+      toast('Rutina asignada correctamente', 'success')
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-        ?? 'Error al asignar rutina'
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al asignar rutina'
       toast(msg, 'error')
     } finally {
       setGuardando(false)
@@ -87,12 +109,68 @@ export default function SocioRutinaModal({ open, onClose, socioId, socioNombre }
     }
   }
 
+  const handleEnviarEmail = async () => {
+    setEnviandoEmail(true)
+    try {
+      await rutinasService.enviarPorEmail(socioId)
+      toast(`PDF enviado a ${socioEmail}`, 'success')
+      setPanelEnvio(false)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al enviar email'
+      toast(msg, 'error')
+    } finally {
+      setEnviandoEmail(false)
+    }
+  }
+
+  const handleWhatsApp = () => {
+    const tel = socioTelefono ? formatearWhatsApp(socioTelefono) : ''
+    const texto = encodeURIComponent(
+      `¡Hola ${socioNombre.split(' ')[0]}! 💪 Te asignamos tu rutina de entrenamiento "${rutinaRecienAsignada ?? 'nueva rutina'}". Cualquier consulta estamos disponibles.`
+    )
+    const url = tel ? `https://wa.me/${tel}?text=${texto}` : `https://wa.me/?text=${texto}`
+    window.open(url, '_blank')
+    setPanelEnvio(false)
+  }
+
   return (
     <>
       <Modal open={open} onClose={onClose} title={`Rutinas — ${socioNombre}`} className="max-w-2xl">
         <div className="flex flex-col gap-5">
           {loading ? <Spinner /> : (
             <>
+              {/* Panel de envío post-asignación */}
+              {panelEnvio && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-semibold text-sm">¿Enviamos la rutina al socio?</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Rutina <strong>{rutinaRecienAsignada}</strong> asignada correctamente
+                      </p>
+                    </div>
+                    <button onClick={() => setPanelEnvio(false)} className="text-muted-foreground hover:text-foreground">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {socioEmail ? (
+                      <Button size="sm" onClick={handleEnviarEmail} loading={enviandoEmail}>
+                        <Mail className="h-3.5 w-3.5" /> Enviar PDF por email
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic flex items-center gap-1">
+                        <Mail className="h-3.5 w-3.5" /> Sin email registrado
+                      </span>
+                    )}
+                    <Button size="sm" variant="outline" onClick={handleWhatsApp}>
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {socioTelefono ? 'WhatsApp' : 'WhatsApp (sin número)'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Rutina activa */}
               <div>
                 <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">Rutina activa</p>
@@ -109,9 +187,20 @@ export default function SocioRutinaModal({ open, onClose, socioId, socioNombre }
                             <p className="text-xs text-muted-foreground">Desde {formatDate(rutinaActiva.fechaAsignacion)}</p>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={handleFinalizar} loading={guardando}>
-                          Finalizar
-                        </Button>
+                        <div className="flex gap-2">
+                          {/* Reenviar desde rutina activa */}
+                          {(socioEmail || socioTelefono) && (
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              setRutinaRecienAsignada(rutinaActiva.rutinaNombre)
+                              setPanelEnvio(true)
+                            }}>
+                              <Mail className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" onClick={handleFinalizar} loading={guardando}>
+                            Finalizar
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

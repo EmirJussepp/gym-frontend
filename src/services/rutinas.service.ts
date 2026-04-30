@@ -31,4 +31,8 @@ export const rutinasService = {
     })
     return res.data
   },
+
+  enviarPorEmail: async (socioId: number): Promise<void> => {
+    await api.post(`/rutinas/socios/${socioId}/enviar-email`)
+  },
 }

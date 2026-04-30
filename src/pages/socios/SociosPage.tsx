@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { sociosService } from '@/services/socios.service'
 import { planesService } from '@/services/planes.service'
 import { exportarSociosPDF } from '@/lib/pdf'
+import { exportarSociosExcel } from '@/lib/excel'
 import type { Socio, Plan } from '@/types'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -16,7 +17,8 @@ import { usePagination } from '@/hooks/usePagination'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import SocioForm from './SocioForm'
 import SocioRutinaModal from './SocioRutinaModal'
-import { Plus, Pencil, Trash2, ListChecks, User, FileDown, Search, X, SlidersHorizontal, RotateCcw } from 'lucide-react'
+import SocioImportModal from './SocioImportModal'
+import { Plus, Pencil, Trash2, ListChecks, User, FileDown, FileUp, Search, X, SlidersHorizontal, RotateCcw } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { useIsAdmin } from '@/hooks/useRole'
 
@@ -40,6 +42,7 @@ export default function SociosPage() {
   const [editando, setEditando]           = useState<Socio | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Socio | null>(null)
   const [rutinaModal, setRutinaModal]     = useState<Socio | null>(null)
+  const [importModal, setImportModal]     = useState(false)
   const { pagina, setPagina, porPagina }  = usePagination(10)
   const { toasts, toast, dismiss }        = useToast()
 
@@ -127,6 +130,11 @@ export default function SociosPage() {
     exportarSociosPDF(sociosConPlan, nombreGimnasio)
   }
 
+  const handleExportarExcel = () => {
+    const nombreGimnasio = localStorage.getItem('gym_nombre') ?? 'Mi Gimnasio'
+    exportarSociosExcel(socios, planes, nombreGimnasio)
+  }
+
   const planNombre = (planId: number) =>
     planes.find(p => p.planId === planId)?.nombre ?? `Plan #${planId}`
 
@@ -138,7 +146,13 @@ export default function SociosPage() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExportar} disabled={socios.length === 0}>
-              <FileDown className="h-4 w-4" /> Exportar PDF
+              <FileDown className="h-4 w-4" /> PDF
+            </Button>
+            <Button variant="outline" onClick={handleExportarExcel} disabled={socios.length === 0}>
+              <FileDown className="h-4 w-4" /> Excel
+            </Button>
+            <Button variant="outline" onClick={() => setImportModal(true)}>
+              <FileUp className="h-4 w-4" /> Importar
             </Button>
             <Button onClick={() => { setEditando(null); setModalOpen(true) }}>
               <Plus className="h-4 w-4" /> Nuevo socio
@@ -363,8 +377,22 @@ export default function SociosPage() {
           onClose={() => setRutinaModal(null)}
           socioId={rutinaModal.socioId}
           socioNombre={`${rutinaModal.nombre} ${rutinaModal.apellido}`}
+          socioEmail={rutinaModal.email}
+          socioTelefono={rutinaModal.telefono}
         />
       )}
+
+      {/* Modal importar Excel */}
+      <SocioImportModal
+        open={importModal}
+        onClose={() => setImportModal(false)}
+        planes={planes}
+        onImportado={(cantidad) => {
+          setImportModal(false)
+          toast(`${cantidad} socio${cantidad !== 1 ? 's' : ''} importado${cantidad !== 1 ? 's' : ''} correctamente`, 'success')
+          fetchSocios()
+        }}
+      />
 
       <ToastContainer toasts={toasts} dismiss={dismiss} />
     </div>
