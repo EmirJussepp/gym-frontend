@@ -150,8 +150,15 @@ export default function AsistenciasPage() {
       if (socioSeleccionado && Number(data.socioId) === socioSeleccionado.socioId) {
         fetchAsistencias(socioSeleccionado, anio, mes)
       }
-    } catch {
-      toast('Error al registrar asistencia', 'error')
+    } catch (err: unknown) {
+      // HTTP 409 → el socio ya tiene asistencia ese día
+      const status = (err as { response?: { status?: number; data?: { error?: string } } })?.response?.status
+      const msg    = (err as { response?: { status?: number; data?: { error?: string } } })?.response?.data?.error
+      if (status === 409) {
+        toast(msg ?? 'Este socio ya tiene una asistencia registrada en esa fecha', 'error')
+      } else {
+        toast('Error al registrar asistencia', 'error')
+      }
     }
   }
 
