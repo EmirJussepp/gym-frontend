@@ -275,7 +275,7 @@ export default function SocioPerfilPage() {
           </div>
         </div>
         <Button variant="outline" onClick={() => setEditarModal(true)}>
-          Editar socio
+          Editar miembro
         </Button>
       </div>
 
@@ -502,7 +502,7 @@ export default function SocioPerfilPage() {
             <Card>
               <CardContent className="pt-4 pb-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Enviar rutina al socio
+                  Enviar rutina al miembro
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={compartirWhatsApp}>
@@ -555,7 +555,6 @@ export default function SocioPerfilPage() {
               )}
             </CardContent>
           </Card>
-
         </div>
       </div>
 
@@ -577,13 +576,13 @@ export default function SocioPerfilPage() {
         />
       )}
 
-      <Modal open={editarModal} onClose={() => setEditarModal(false)} title="Editar socio" className="max-w-2xl">
+      <Modal open={editarModal} onClose={() => setEditarModal(false)} title="Editar miembro" className="max-w-2xl">
         <SocioForm
           planes={planes}
           socio={socio}
           onSaved={async () => {
             setEditarModal(false)
-            toast('Socio actualizado correctamente', 'success')
+            toast('Miembro actualizado correctamente', 'success')
             const updated = await sociosService.getById(socioId)
             setSocio(updated)
           }}

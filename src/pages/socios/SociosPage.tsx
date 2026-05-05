@@ -68,7 +68,7 @@ export default function SociosPage() {
       setTotalPaginas(res.totalPaginas)
       setTotalSocios(res.total)
     } catch {
-      toast('Error al cargar socios', 'error')
+      toast('Error al cargar miembros', 'error')
     } finally {
       setLoading(false)
     }
@@ -103,11 +103,11 @@ export default function SociosPage() {
     if (!confirmDelete) return
     try {
       await sociosService.delete(confirmDelete.socioId)
-      toast('Socio desactivado correctamente', 'success')
+      toast('Miembro desactivado correctamente', 'success')
       setConfirmDelete(null)
       fetchSocios()
     } catch {
-      toast('Error al eliminar socio', 'error')
+      toast('Error al eliminar miembro', 'error')
     }
   }
 
@@ -141,8 +141,8 @@ export default function SociosPage() {
   return (
     <div>
       <PageHeader
-        title="Socios"
-        subtitle={`${totalSocios} socios en total`}
+        title="Miembros"
+        subtitle={`${totalSocios} miembros en total`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExportar} disabled={socios.length === 0}>
@@ -155,7 +155,7 @@ export default function SociosPage() {
               <FileUp className="h-4 w-4" /> Importar
             </Button>
             <Button onClick={() => { setEditando(null); setModalOpen(true) }}>
-              <Plus className="h-4 w-4" /> Nuevo socio
+              <Plus className="h-4 w-4" /> Nuevo miembro
             </Button>
           </div>
         }
@@ -253,11 +253,11 @@ export default function SociosPage() {
             <div className="text-center py-20 text-muted-foreground">
               <User className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p className="font-medium">
-                {hayFiltros ? 'Sin resultados para los filtros aplicados' : 'Sin socios registrados'}
+                {hayFiltros ? 'Sin resultados para los filtros aplicados' : 'Sin miembros registrados'}
               </p>
               {!hayFiltros && (
                 <Button className="mt-4" onClick={() => { setEditando(null); setModalOpen(true) }}>
-                  <Plus className="h-4 w-4" /> Agregar primer socio
+                  <Plus className="h-4 w-4" /> Agregar primer miembro
                 </Button>
               )}
               {hayFiltros && (
@@ -342,7 +342,7 @@ export default function SociosPage() {
       <Modal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditando(null) }}
-        title={editando ? 'Editar socio' : 'Nuevo socio'}
+        title={editando ? 'Editar miembro' : 'Nuevo miembro'}
         className="max-w-2xl"
       >
         <SocioForm
@@ -351,7 +351,7 @@ export default function SociosPage() {
           onSaved={() => {
             setModalOpen(false)
             setEditando(null)
-            toast(editando ? 'Socio actualizado' : 'Socio creado', 'success')
+            toast(editando ? 'Miembro actualizado' : 'Miembro creado', 'success')
             fetchSocios()
           }}
           onCancel={() => { setModalOpen(false); setEditando(null) }}
@@ -362,7 +362,7 @@ export default function SociosPage() {
       <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Confirmar desactivación">
         <p className="text-sm text-muted-foreground mb-6">
           ¿Desactivar a <strong>{confirmDelete?.nombre} {confirmDelete?.apellido}</strong>?
-          El socio no podrá registrar asistencias hasta ser reactivado.
+          El miembro no podrá registrar asistencias hasta ser reactivado.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
@@ -389,7 +389,7 @@ export default function SociosPage() {
         planes={planes}
         onImportado={(cantidad) => {
           setImportModal(false)
-          toast(`${cantidad} socio${cantidad !== 1 ? 's' : ''} importado${cantidad !== 1 ? 's' : ''} correctamente`, 'success')
+          toast(`${cantidad} miembro${cantidad !== 1 ? 's' : ''} importado${cantidad !== 1 ? 's' : ''} correctamente`, 'success')
           fetchSocios()
         }}
       />

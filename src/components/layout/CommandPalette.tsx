@@ -83,7 +83,7 @@ export function CommandPalette() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Buscar socio por nombre, DNI o email..."
+            placeholder="Buscar miembro por nombre, DNI o email..."
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           {query && (
@@ -110,7 +110,7 @@ export function CommandPalette() {
 
           {!loading && !query && (
             <div className="py-6 text-center text-sm text-muted-foreground">
-              Escribí para buscar un socio
+              Escribí para buscar un miembro
             </div>
           )}
 

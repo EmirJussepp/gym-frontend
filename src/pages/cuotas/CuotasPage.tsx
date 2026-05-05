@@ -104,6 +104,7 @@ export default function CuotasPage() {
       toast('Cuota actualizada', 'success')
       setEditModal(null)
       fetchCuotas()
+      cargarNotificaciones()
     } catch {
       toast('Error al actualizar la cuota', 'error')
     } finally {
@@ -157,6 +158,7 @@ const handlePagar = async () => {
       toast(`Se generaron ${res.generadas} cuotas para ${res.periodo}`, 'success')
       setGenerarModal(false)
       setPeriodo(periodoInput)
+      cargarNotificaciones()
     } catch {
       toast('Error al generar cuotas', 'error')
     } finally {
@@ -269,7 +271,7 @@ const handlePagar = async () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableTh>Socio</TableTh>
+                  <TableTh>Miembro</TableTh>
                   <TableTh>Período</TableTh>
                   <TableTh>Monto</TableTh>
                   <TableTh>Vencimiento</TableTh>
@@ -370,7 +372,7 @@ const handlePagar = async () => {
       <Modal open={generarModal} onClose={() => setGenerarModal(false)} title="Generar cuotas del período">
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Genera una cuota por cada socio activo para el período{' '}
+            Genera una cuota por cada miembro activo para el período{' '}
             <strong>{periodoInput}</strong>. Si ya existen cuotas para ese período, no se duplican.
           </p>
           <Input

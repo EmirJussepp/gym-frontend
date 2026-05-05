@@ -94,7 +94,7 @@ export default function SocioForm({ planes, socio, onSaved, onCancel }: Props) {
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
         <Button type="submit" loading={isSubmitting}>
-          {socio ? 'Guardar cambios' : 'Crear socio'}
+          {socio ? 'Guardar cambios' : 'Crear miembro'}
         </Button>
       </div>
     </form>

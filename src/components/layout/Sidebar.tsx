@@ -13,7 +13,7 @@ import {
 
 const NAV_MAIN = [
   { to: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
-  { to: '/socios',      label: 'Socios',       icon: Users },
+  { to: '/socios',      label: 'Miembros',     icon: Users },
   { to: '/cuotas',      label: 'Cuotas',       icon: CreditCard, badge: true },
   { to: '/asistencias', label: 'Asistencias',  icon: CalendarCheck },
 ]
@@ -142,7 +142,7 @@ export function Sidebar() {
           className="w-full flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
         >
           <Search className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left text-xs">Buscar socio...</span>
+          <span className="flex-1 text-left text-xs">Buscar miembro...</span>
           <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-[10px]">
             ⌘K
           </kbd>

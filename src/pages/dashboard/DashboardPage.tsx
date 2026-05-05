@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
   const CARDS = [
     {
-      title: 'Socios activos',
+      title: 'Miembros activos',
       value: stats.socios,
       icon: Users,
       color: 'text-blue-500 bg-blue-50',
@@ -252,7 +252,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Legend formatter={(v: string) => v === 'asistencias' ? 'Asistencias' : 'Socios nuevos'} />
+                <Legend formatter={(v: string) => v === 'asistencias' ? 'Asistencias' : 'Miembros nuevos'} />
                 <Bar dataKey="asistencias" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="nuevos"      fill="#06b6d4" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -286,7 +286,7 @@ export default function DashboardPage() {
                   {deudores.map(c => (
                     <div key={c.cuotaId} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
                       <div>
-                        <p className="text-sm font-medium">{sociosMap[c.socioId] ?? `Socio #${c.socioId}`}</p>
+                        <p className="text-sm font-medium">{sociosMap[c.socioId] ?? `Miembro #${c.socioId}`}</p>
                         <p className="text-xs text-muted-foreground">Vence {formatDate(c.fechaVencimiento)}</p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -306,7 +306,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-blue-500" />
-                  <p className="font-semibold text-sm">Socios</p>
+                  <p className="font-semibold text-sm">Miembros</p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => navigate('/socios')}>
                   Ver todos <ChevronRight className="h-3.5 w-3.5" />
