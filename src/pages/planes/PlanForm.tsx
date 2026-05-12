@@ -8,12 +8,17 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 
+const boolFromSelect = z.preprocess(
+  (v) => v === 'true' || v === true,
+  z.boolean()
+)
+
 const schema = z.object({
   nombre: z.string().min(1, 'Requerido'),
   precio: z.coerce.number().min(0, 'Debe ser mayor a 0'),
   diasPorSemana: z.coerce.number().optional(),
-  esLibre: z.coerce.boolean().optional(),
-  activo: z.coerce.boolean().optional(),
+  esLibre: boolFromSelect.optional(),
+  activo: boolFromSelect.optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -25,10 +30,12 @@ interface Props {
 }
 
 export default function PlanForm({ plan, onSaved, onCancel }: Props) {
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { activo: true, esLibre: false, diasPorSemana: 3 },
   })
+
+  const esLibre = String(watch('esLibre')) === 'true'
 
   useEffect(() => {
     if (plan) reset({ nombre: plan.nombre, precio: plan.precio, diasPorSemana: plan.diasPorSemana, esLibre: plan.esLibre, activo: plan.activo })
@@ -36,8 +43,9 @@ export default function PlanForm({ plan, onSaved, onCancel }: Props) {
   }, [plan, reset])
 
   const onSubmit = async (data: FormData) => {
-    if (plan) await planesService.update(plan.planId, data)
-    else await planesService.create(data)
+    const payload = { ...data, diasPorSemana: data.esLibre ? undefined : data.diasPorSemana }
+    if (plan) await planesService.update(plan.planId, payload)
+    else await planesService.create(payload)
     onSaved()
   }
 
@@ -46,7 +54,16 @@ export default function PlanForm({ plan, onSaved, onCancel }: Props) {
       <Input id="nombre" label="Nombre del plan" error={errors.nombre?.message} {...register('nombre')} />
       <div className="grid grid-cols-2 gap-4">
         <Input id="precio" label="Precio ($)" type="number" error={errors.precio?.message} {...register('precio')} />
-        <Input id="diasPorSemana" label="Días por semana" type="number" min={1} max={7} {...register('diasPorSemana')} />
+        <Input
+          id="diasPorSemana"
+          label="Días por semana"
+          type="number"
+          min={1}
+          max={7}
+          disabled={esLibre}
+          placeholder={esLibre ? 'No aplica' : undefined}
+          {...register('diasPorSemana')}
+        />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Select id="esLibre" label="Tipo" {...register('esLibre')}>

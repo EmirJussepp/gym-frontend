@@ -1,6 +1,8 @@
 import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
 
+// En desarrollo usa el proxy de Vite (/api → localhost:8084)
+// En producción usa la URL del backend en Railway (VITE_API_BASE_URL)
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api',
   timeout: 30_000,
