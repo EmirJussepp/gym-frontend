@@ -2,7 +2,8 @@ import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL ?? '/api',
+  timeout: 30_000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -24,7 +25,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && tieneToken && !redirecting) {
       redirecting = true
       useAuthStore.getState().logout()
+      // Resetear la flag tras la navegación para que un re-login funcione
       window.location.href = '/login'
+      setTimeout(() => { redirecting = false }, 2000)
     }
     return Promise.reject(error)
   }

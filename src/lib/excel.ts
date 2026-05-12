@@ -1,9 +1,44 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import type { Socio, Plan, SocioRequest } from '@/types'
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+const COL_WIDTHS = [15, 15, 12, 14, 28, 16, 18, 12, 14, 20]
+
+const HEADERS = [
+  'Nombre', 'Apellido', 'DNI', 'Teléfono', 'Email',
+  'Fecha Nacimiento', 'Plan', 'Estado', 'Fecha Inicio', 'Precio Personalizado',
+]
+
+function applyHeaderStyle(row: ExcelJS.Row) {
+  row.eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }
+    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+  })
+  row.height = 22
+}
+
+function applyColWidths(ws: ExcelJS.Worksheet, widths: number[]) {
+  ws.columns = widths.map((width, i) => ({ key: String(i), width }))
+}
+
+async function triggerDownload(workbook: ExcelJS.Workbook, fileName: string) {
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob   = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+  const url = URL.createObjectURL(blob)
+  const a   = document.createElement('a')
+  a.href     = url
+  a.download = fileName
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 // ─── Exportar ─────────────────────────────────────────────────────────────────
 
-export function exportarSociosExcel(
+export async function exportarSociosExcel(
   socios: Socio[],
   planes: Plan[],
   nombreGimnasio = 'Mi Gimnasio'
@@ -11,59 +46,57 @@ export function exportarSociosExcel(
   const planNombre = (planId: number) =>
     planes.find(p => p.planId === planId)?.nombre ?? `Plan #${planId}`
 
-  const filas = socios.map(s => ({
-    Nombre:          s.nombre,
-    Apellido:        s.apellido,
-    DNI:             s.dni,
-    Teléfono:        s.telefono ?? '',
-    Email:           s.email ?? '',
-    'Fecha Nacimiento': s.fechaNacimiento ?? '',
-    Plan:            planNombre(s.planId),
-    Estado:          s.estado,
-    'Fecha Inicio':  s.fechaInicio ?? '',
-    'Precio Personalizado': s.precioPersonalizado ?? '',
-  }))
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Socios')
 
-  const ws = XLSX.utils.json_to_sheet(filas)
+  applyColWidths(ws, COL_WIDTHS)
 
-  // Ancho de columnas
-  ws['!cols'] = [
-    { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 14 },
-    { wch: 28 }, { wch: 16 }, { wch: 18 }, { wch: 12 },
-    { wch: 14 }, { wch: 20 },
-  ]
+  const headerRow = ws.addRow(HEADERS)
+  applyHeaderStyle(headerRow)
 
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Socios')
+  socios.forEach(s => {
+    ws.addRow([
+      s.nombre,
+      s.apellido,
+      s.dni,
+      s.telefono ?? '',
+      s.email ?? '',
+      s.fechaNacimiento ?? '',
+      planNombre(s.planId),
+      s.estado,
+      s.fechaInicio ?? '',
+      s.precioPersonalizado ?? '',
+    ])
+  })
 
   const fecha = new Date().toISOString().slice(0, 10)
-  XLSX.writeFile(wb, `socios-${nombreGimnasio.replace(/\s+/g, '-').toLowerCase()}-${fecha}.xlsx`)
+  await triggerDownload(
+    wb,
+    `socios-${nombreGimnasio.replace(/\s+/g, '-').toLowerCase()}-${fecha}.xlsx`
+  )
 }
 
 // ─── Plantilla vacía ──────────────────────────────────────────────────────────
 
-export function descargarPlantillaExcel(planes: Plan[]) {
-  const encabezados = [{
-    Nombre:          '',
-    Apellido:        '',
-    DNI:             '',
-    Teléfono:        '',
-    Email:           '',
-    'Fecha Nacimiento': '(YYYY-MM-DD)',
-    Plan:            planes.map(p => p.nombre).join(' | '),
-    Estado:          'ACTIVO | INACTIVO | SUSPENDIDO',
-    'Fecha Inicio':  '(YYYY-MM-DD)',
-    'Precio Personalizado': '(opcional, número)',
-  }]
-  const ws = XLSX.utils.json_to_sheet(encabezados)
-  ws['!cols'] = [
-    { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 14 },
-    { wch: 28 }, { wch: 16 }, { wch: 35 }, { wch: 35 },
-    { wch: 14 }, { wch: 20 },
-  ]
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Socios')
-  XLSX.writeFile(wb, 'plantilla-socios.xlsx')
+export async function descargarPlantillaExcel(planes: Plan[]) {
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Socios')
+
+  applyColWidths(ws, [15, 15, 12, 14, 28, 16, 35, 35, 14, 20])
+
+  const headerRow = ws.addRow(HEADERS)
+  applyHeaderStyle(headerRow)
+
+  ws.addRow([
+    '', '', '', '', '',
+    '(YYYY-MM-DD)',
+    planes.map(p => p.nombre).join(' | '),
+    'ACTIVO | INACTIVO | SUSPENDIDO',
+    '(YYYY-MM-DD)',
+    '(opcional, número)',
+  ])
+
+  await triggerDownload(wb, 'plantilla-socios.xlsx')
 }
 
 // ─── Tipos de resultado de parseo ─────────────────────────────────────────────
@@ -77,76 +110,79 @@ export interface FilaImportada {
 
 // ─── Parsear archivo ──────────────────────────────────────────────────────────
 
-export function parsearArchivoSocios(
+export async function parsearArchivoSocios(
   file: File,
   planes: Plan[]
 ): Promise<FilaImportada[]> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = e => {
-      try {
-        const data = new Uint8Array(e.target!.result as ArrayBuffer)
-        const wb   = XLSX.read(data, { type: 'array' })
-        const ws   = wb.Sheets[wb.SheetNames[0]]
-        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: '' })
+  const buffer = await file.arrayBuffer()
 
-        const resultado: FilaImportada[] = rows.map((row, idx) => {
-          const errores: string[] = []
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.load(buffer)
 
-          const nombre   = String(row['Nombre'] ?? '').trim()
-          const apellido = String(row['Apellido'] ?? '').trim()
-          const dni      = String(row['DNI'] ?? '').trim()
-          const telefono = String(row['Teléfono'] ?? '').trim() || undefined
-          const email    = String(row['Email'] ?? '').trim() || undefined
-          const fechaNac = String(row['Fecha Nacimiento'] ?? '').trim() || undefined
-          const planStr  = String(row['Plan'] ?? '').trim()
-          const estado   = String(row['Estado'] ?? 'ACTIVO').trim().toUpperCase()
-          const fechaIni = String(row['Fecha Inicio'] ?? '').trim() || undefined
-          const precioStr = String(row['Precio Personalizado'] ?? '').trim()
+  const ws = wb.worksheets[0]
+  if (!ws) throw new Error('El archivo no contiene hojas')
 
-          if (!nombre)   errores.push('Nombre requerido')
-          if (!apellido) errores.push('Apellido requerido')
-          if (!dni)      errores.push('DNI requerido')
-
-          // Buscar plan por nombre (case-insensitive)
-          const plan = planes.find(
-            p => p.nombre.toLowerCase() === planStr.toLowerCase()
-          )
-          if (!plan) errores.push(`Plan "${planStr}" no encontrado`)
-
-          const estadosValidos = ['ACTIVO', 'INACTIVO', 'SUSPENDIDO']
-          if (!estadosValidos.includes(estado)) errores.push(`Estado inválido: ${estado}`)
-
-          // Validar fechas (formato YYYY-MM-DD)
-          const reDate = /^\d{4}-\d{2}-\d{2}$/
-          if (fechaNac && !reDate.test(fechaNac)) errores.push('Fecha nacimiento: usar formato YYYY-MM-DD')
-          if (fechaIni && !reDate.test(fechaIni)) errores.push('Fecha inicio: usar formato YYYY-MM-DD')
-
-          const precioPersonalizado = precioStr ? Number(precioStr) : undefined
-          if (precioStr && isNaN(precioPersonalizado!)) errores.push('Precio personalizado debe ser un número')
-
-          const datos: SocioRequest = {
-            nombre,
-            apellido,
-            dni,
-            telefono,
-            email,
-            fechaNacimiento: fechaNac,
-            planId:  plan?.planId ?? 0,
-            estado:  errores.length ? 'ACTIVO' : estado,
-            fechaInicio: fechaIni,
-            precioPersonalizado: precioPersonalizado && !isNaN(precioPersonalizado) ? precioPersonalizado : undefined,
-          }
-
-          return { fila: idx + 2, datos, errores, valido: errores.length === 0 }
-        })
-
-        resolve(resultado)
-      } catch (err) {
-        reject(err)
-      }
-    }
-    reader.onerror = reject
-    reader.readAsArrayBuffer(file)
+  // First row is the header — map column index → header name
+  const headerRow = ws.getRow(1)
+  const colIndex: Record<string, number> = {}
+  headerRow.eachCell((cell, colNumber) => {
+    const val = String(cell.value ?? '').trim()
+    if (val) colIndex[val] = colNumber
   })
+
+  const col = (row: ExcelJS.Row, name: string): string =>
+    String(row.getCell(colIndex[name] ?? 0).value ?? '').trim()
+
+  const resultado: FilaImportada[] = []
+
+  ws.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return // skip header
+
+    const errores: string[] = []
+
+    const nombre    = col(row, 'Nombre')
+    const apellido  = col(row, 'Apellido')
+    const dni       = col(row, 'DNI')
+    const telefono  = col(row, 'Teléfono') || undefined
+    const email     = col(row, 'Email') || undefined
+    const fechaNac  = col(row, 'Fecha Nacimiento') || undefined
+    const planStr   = col(row, 'Plan')
+    const estado    = col(row, 'Estado').toUpperCase() || 'ACTIVO'
+    const fechaIni  = col(row, 'Fecha Inicio') || undefined
+    const precioStr = col(row, 'Precio Personalizado')
+
+    if (!nombre)   errores.push('Nombre requerido')
+    if (!apellido) errores.push('Apellido requerido')
+    if (!dni)      errores.push('DNI requerido')
+
+    const plan = planes.find(p => p.nombre.toLowerCase() === planStr.toLowerCase())
+    if (!plan) errores.push(`Plan "${planStr}" no encontrado`)
+
+    const estadosValidos = ['ACTIVO', 'INACTIVO', 'SUSPENDIDO']
+    if (!estadosValidos.includes(estado)) errores.push(`Estado inválido: ${estado}`)
+
+    const reDate = /^\d{4}-\d{2}-\d{2}$/
+    if (fechaNac && !reDate.test(fechaNac)) errores.push('Fecha nacimiento: usar formato YYYY-MM-DD')
+    if (fechaIni && !reDate.test(fechaIni)) errores.push('Fecha inicio: usar formato YYYY-MM-DD')
+
+    const precioPersonalizado = precioStr ? Number(precioStr) : undefined
+    if (precioStr && isNaN(precioPersonalizado!)) errores.push('Precio personalizado debe ser un número')
+
+    const datos: SocioRequest = {
+      nombre,
+      apellido,
+      dni,
+      telefono,
+      email,
+      fechaNacimiento: fechaNac,
+      planId:  plan?.planId ?? 0,
+      estado:  errores.length ? 'ACTIVO' : estado,
+      fechaInicio: fechaIni,
+      precioPersonalizado: precioPersonalizado && !isNaN(precioPersonalizado) ? precioPersonalizado : undefined,
+    }
+
+    resultado.push({ fila: rowNumber, datos, errores, valido: errores.length === 0 })
+  })
+
+  return resultado
 }

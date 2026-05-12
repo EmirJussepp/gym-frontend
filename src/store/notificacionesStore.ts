@@ -13,7 +13,7 @@ export const useNotificacionesStore = create<NotificacionesStore>((set) => ({
       const now = new Date()
       const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
       const cuotas = await cuotasService.getByPeriodo(periodo)
-      const vencidas = cuotas.filter(c => c.estado !== 'PAGADA').length
+      const vencidas = cuotas.filter(c => c.estado === 'VENCIDA').length
       set({ cuotasVencidas: vencidas })
     } catch {
       // silencioso

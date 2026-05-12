@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,15 +9,16 @@ import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 
 const schema = z.object({
-  nombre: z.string().min(1, 'Requerido'),
-  apellido: z.string().min(1, 'Requerido'),
-  dni: z.string().min(1, 'Requerido'),
-  telefono: z.string().optional(),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
-  planId: z.coerce.number().min(1, 'Seleccioná un plan'),
-  estado: z.string().min(1, 'Requerido'),
-  fechaNacimiento: z.string().optional(),
-  fechaInicio: z.string().optional(),
+  nombre:              z.string().min(1, 'Requerido'),
+  apellido:            z.string().min(1, 'Requerido'),
+  dni:                 z.string().min(1, 'Requerido'),
+  telefono:            z.string().optional(),
+  email:               z.string().email('Email inválido').optional().or(z.literal('')),
+  planId:              z.coerce.number().min(1, 'Seleccioná un plan'),
+  estado:              z.string().min(1, 'Requerido'),
+  fechaNacimiento:     z.string().optional(),
+  fechaInicio:         z.string().optional(),
+  precioPersonalizado: z.coerce.number().positive('Debe ser mayor a 0').optional().or(z.literal('')),
 })
 
 type FormData = z.infer<typeof schema>
@@ -27,26 +28,31 @@ interface Props {
   socio: Socio | null
   onSaved: () => void
   onCancel: () => void
+  onError?: (msg: string) => void
 }
 
-export default function SocioForm({ planes, socio, onSaved, onCancel }: Props) {
+export default function SocioForm({ planes, socio, onSaved, onCancel, onError }: Props) {
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { estado: 'ACTIVO' },
   })
 
   useEffect(() => {
+    setSubmitError(null)
     if (socio) {
       reset({
-        nombre: socio.nombre,
-        apellido: socio.apellido,
-        dni: socio.dni,
-        telefono: socio.telefono ?? '',
-        email: socio.email ?? '',
-        planId: socio.planId,
-        estado: socio.estado,
-        fechaNacimiento: socio.fechaNacimiento ?? '',
-        fechaInicio: socio.fechaInicio ?? '',
+        nombre:              socio.nombre,
+        apellido:            socio.apellido,
+        dni:                 socio.dni,
+        telefono:            socio.telefono ?? '',
+        email:               socio.email ?? '',
+        planId:              socio.planId,
+        estado:              socio.estado,
+        fechaNacimiento:     socio.fechaNacimiento ?? '',
+        fechaInicio:         socio.fechaInicio ?? '',
+        precioPersonalizado: socio.precioPersonalizado ?? '',
       })
     } else {
       reset({ estado: 'ACTIVO' })
@@ -54,12 +60,24 @@ export default function SocioForm({ planes, socio, onSaved, onCancel }: Props) {
   }, [socio, reset])
 
   const onSubmit = async (data: FormData) => {
-    if (socio) {
-      await sociosService.update(socio.socioId, data)
-    } else {
-      await sociosService.create(data)
+    setSubmitError(null)
+    try {
+      const payload = {
+        ...data,
+        precioPersonalizado: data.precioPersonalizado !== '' ? Number(data.precioPersonalizado) : undefined,
+      }
+      if (socio) {
+        await sociosService.update(socio.socioId, payload)
+      } else {
+        await sociosService.create(payload)
+      }
+      onSaved()
+    } catch (e) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+        ?? 'Error al guardar. Verificá los datos e intentá de nuevo.'
+      setSubmitError(msg)
+      onError?.(msg)
     }
-    onSaved()
   }
 
   return (
@@ -90,6 +108,22 @@ export default function SocioForm({ planes, socio, onSaved, onCancel }: Props) {
           <option value="SUSPENDIDO">Suspendido</option>
         </Select>
       </div>
+      <Input
+        id="precioPersonalizado"
+        label="Precio personalizado (opcional)"
+        type="number"
+        min={0}
+        step="0.01"
+        placeholder={socio?.planId ? `Precio del plan por defecto` : ''}
+        error={errors.precioPersonalizado?.message}
+        {...register('precioPersonalizado')}
+      />
+
+      {submitError && (
+        <p className="text-sm text-destructive rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
+          {submitError}
+        </p>
+      )}
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>

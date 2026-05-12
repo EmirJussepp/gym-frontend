@@ -26,7 +26,7 @@ export const rutinasService = {
   },
     // ✅ NUEVO: descargar PDF
   descargarPdf: async (socioId: number): Promise<Blob> => {
-    const res = await api.get(`rutinas/socios/${socioId}/rutina/pdf`, {
+    const res = await api.get(`/rutinas/socios/${socioId}/rutina/pdf`, {
       responseType: 'blob', // 🔥 CLAVE
     })
     return res.data

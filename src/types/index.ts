@@ -81,6 +81,7 @@ export interface Ejercicio {
   ejercicioId: number
   nombre: string
   grupoMuscularId: number
+  grupoMuscular?: string
   descripcion?: string
   imagenUrl?: string
   activo: boolean

@@ -119,9 +119,6 @@ const abrirPago = (cuota: Cuota) => {
   setMetodoPagoId(primerMetodo?.id ? String(primerMetodo.id) : '')
 }
 const handlePagar = async () => {
-
-  console.log('metodoPagoId state:', metodoPagoId)
-  console.log('metodosPago disponibles:', metodosPago)
   if (!pagarModal || !metodoPagoId) return
 
   const metodoId = Number(metodoPagoId)
@@ -141,9 +138,9 @@ const handlePagar = async () => {
     setPagarModal(null)
     await fetchCuotas()
     cargarNotificaciones()
-  } catch (e: any) {
-    console.error(e)
-    toast(e?.response?.data?.error || 'Error al registrar el pago', 'error')
+  } catch (e) {
+    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    toast(msg || 'Error al registrar el pago', 'error')
   } finally {
     setPagando(false)
   }
@@ -155,7 +152,10 @@ const handlePagar = async () => {
     setGenerando(true)
     try {
       const res = await cuotasService.generar(anio, mes, Number(diaVencimiento))
-      toast(`Se generaron ${res.generadas} cuotas para ${res.periodo}`, 'success')
+      const msg = res.generadas > 0
+        ? `Se generaron ${res.generadas} cuotas para ${res.periodo}`
+        : `No hay cuotas nuevas para ${res.periodo} (ya existían todas)`
+      toast(msg, 'success')
       setGenerarModal(false)
       setPeriodo(periodoInput)
       cargarNotificaciones()

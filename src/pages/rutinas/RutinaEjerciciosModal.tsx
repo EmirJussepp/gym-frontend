@@ -241,7 +241,7 @@ export default function RutinaEjerciciosModal({ open, onClose, rutinaId, rutinaN
                     <option value="">Seleccionar...</option>
                     {ejercicios.map(e => (
                       <option key={e.ejercicioId} value={e.ejercicioId}>
-                        {e.nombre} {e.grupoMuscularNombre ? `(${e.grupoMuscularNombre})` : ''}
+                        {e.nombre} {e.grupoMuscular ? `(${e.grupoMuscular})` : ''}
                       </option>
                     ))}
                   </Select>

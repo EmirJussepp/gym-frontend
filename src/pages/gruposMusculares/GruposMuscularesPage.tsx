@@ -44,7 +44,7 @@ export default function GruposMuscularesPage() {
   const onSubmit = async (data: { nombre: string }) => {
     try {
       if (editando) {
-        await gruposMuscularesService.update(editando.grupoMuscularId, data.nombre)
+        await gruposMuscularesService.update(editando.id, data.nombre)
         toast('Grupo muscular actualizado', 'success')
       } else {
         await gruposMuscularesService.create(data.nombre)
@@ -60,7 +60,7 @@ export default function GruposMuscularesPage() {
   const handleDelete = async () => {
     if (!confirmDelete) return
     try {
-      await gruposMuscularesService.delete(confirmDelete.grupoMuscularId)
+      await gruposMuscularesService.delete(confirmDelete.id)
       toast('Grupo muscular eliminado', 'success')
       setConfirmDelete(null)
       fetchGrupos()
@@ -93,8 +93,8 @@ export default function GruposMuscularesPage() {
           </TableHead>
           <TableBody>
             {grupos.map((g) => (
-              <TableRow key={g.grupoMuscularId}>
-                <TableTd className="text-muted-foreground">{g.grupoMuscularId}</TableTd>
+              <TableRow key={g.id}>
+                <TableTd className="text-muted-foreground">{g.id}</TableTd>
                 <TableTd className="font-medium">{g.nombre}</TableTd>
                 <TableTd>
                   <div className="flex items-center gap-1 justify-end">

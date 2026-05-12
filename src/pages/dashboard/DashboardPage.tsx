@@ -14,7 +14,7 @@ import {
   Users, CreditCard, AlertCircle,
   ChevronRight, TrendingUp, TrendingDown
 } from 'lucide-react'
-import type { Cuota, Socio, Rutina } from '@/types'
+import type { Cuota, Socio } from '@/types'
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -41,21 +41,20 @@ export default function DashboardPage() {
         const now = new Date()
         const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
-        const [socios, cuotasPeriodo, sociosData, estData, rutinasData] = await Promise.all([
-          sociosService.getAll(1, 1),
-          cuotasService.getByPeriodo(periodo),
+        const [sociosData, cuotasPeriodo, estData, rutinasData] = await Promise.all([
           sociosService.getAll(1, 5),
+          cuotasService.getByPeriodo(periodo),
           estadisticasService.getAnio(anioSeleccionado),
           rutinasService.getAll(1, 1),
         ])
 
-        const pendientes  = cuotasPeriodo.filter(c => c.estado !== 'PAGADA')
-        const cobradoMes  = cuotasPeriodo
+        const pendientes = cuotasPeriodo.filter(c => c.estado !== 'PAGADA')
+        const cobradoMes = cuotasPeriodo
           .filter(c => c.estado === 'PAGADA')
           .reduce((acc, c) => acc + c.monto, 0)
 
         setStats({
-          socios:     socios.total,
+          socios:     sociosData.total,
           rutinas:    rutinasData.total,
           deudores:   pendientes.length,
           cobradoMes,

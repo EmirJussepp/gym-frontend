@@ -79,7 +79,7 @@ export default function SocioImportModal({ open, onClose, planes, onImportado }:
           <p className="text-xs text-muted-foreground mb-3">
             Usá esta plantilla para cargar los socios. Los planes disponibles y el formato de fechas están indicados en la primera fila.
           </p>
-          <Button variant="outline" size="sm" onClick={() => descargarPlantillaExcel(planes)}>
+          <Button variant="outline" size="sm" onClick={() => void descargarPlantillaExcel(planes)}>
             <FileDown className="h-3.5 w-3.5" /> Descargar plantilla .xlsx
           </Button>
         </div>

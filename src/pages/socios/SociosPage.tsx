@@ -130,9 +130,9 @@ export default function SociosPage() {
     exportarSociosPDF(sociosConPlan, nombreGimnasio)
   }
 
-  const handleExportarExcel = () => {
+  const handleExportarExcel = async () => {
     const nombreGimnasio = localStorage.getItem('gym_nombre') ?? 'Mi Gimnasio'
-    exportarSociosExcel(socios, planes, nombreGimnasio)
+    await exportarSociosExcel(socios, planes, nombreGimnasio)
   }
 
   const planNombre = (planId: number) =>

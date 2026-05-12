@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+import { AdminRoute } from '@/components/layout/AdminRoute'
 
 import LoginPage from '@/pages/auth/LoginPage'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
@@ -42,12 +43,14 @@ export default function App() {
           <Route path="asistencias" element={<AsistenciasPage />} />
           <Route path="horarios" element={<HorariosPage />} />
           <Route path="recuperaciones" element={<RecuperacionesPage />} />
-          <Route path="roles" element={<RolesPage />} />
-          <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="socios/:id" element={<SocioPerfilPage />} />
-          <Route path="metodos-pago" element={<MetodosPagoPage />} />
           <Route path="biblioteca" element={<BibliotecaPage />} />
-          <Route path="configuracion" element={<ConfiguracionPage />} />
+
+          {/* Solo admins */}
+          <Route path="roles"        element={<AdminRoute><RolesPage /></AdminRoute>} />
+          <Route path="usuarios"     element={<AdminRoute><UsuariosPage /></AdminRoute>} />
+          <Route path="metodos-pago" element={<AdminRoute><MetodosPagoPage /></AdminRoute>} />
+          <Route path="configuracion" element={<AdminRoute><ConfiguracionPage /></AdminRoute>} />
 
         </Route>
 
